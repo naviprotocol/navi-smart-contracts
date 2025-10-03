@@ -3,3 +3,4 @@
 **/copy
 .coverage_map.mvcov
 .trace
+.DS_Store
