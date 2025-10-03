@@ -1,0 +1,22 @@
+[package]
+name = "oracle"
+version = "0.0.1"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "mainnet"
+
+[dependencies.SupraOracle]
+git = "https://github.com/naviprotocol/supra-oracle.git"
+subdir = "supra_holder"
+rev = "main"
+
+[dependencies.Pyth]
+git = "https://github.com/naviprotocol/pyth-crosschain.git"
+subdir = "target_chains/sui/contracts"
+rev = "navi-forked"
+
+[addresses]
+sui = "0x02"
+oracle = "0x0"

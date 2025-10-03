@@ -1,0 +1,17 @@
+[package]
+name = "lending_ui"
+version = "0.0.1"
+published-at = "0x771dd93ca0abab417bfa5c7f0e192a71899ed0dacd6fceb2e826c4c7e415d5bf"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "mainnet"
+
+[dependencies.lending_core]
+local = "../lending_core"
+override = true
+
+[addresses]
+lending_ui = "0x0"
+lending_core = "0x7093782c6c2b5f928340fc5b600a2be6afe2b8107a0a0dbde5d971cccadab2c5"

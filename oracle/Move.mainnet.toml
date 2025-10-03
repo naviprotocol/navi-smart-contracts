@@ -1,0 +1,23 @@
+[package]
+name = "oracle"
+version = "0.0.1"
+published-at = "0xc2d49bf5e75d2258ee5563efa527feb6155de7ac6f6bf025a23ee88cd12d5a83"
+
+[dependencies.Sui]
+git = "https://github.com/MystenLabs/sui.git"
+subdir = "crates/sui-framework/packages/sui-framework"
+rev = "mainnet"
+
+[dependencies.SupraOracle]
+git = "https://github.com/naviprotocol/supra-oracle.git"
+subdir = "supra_holder"
+rev = "main"
+
+[dependencies.Pyth]
+git = "https://github.com/naviprotocol/pyth-crosschain.git"
+subdir = "target_chains/sui/contracts"
+rev = "navi-forked"
+
+[addresses]
+sui = "0x02"
+oracle = "0xca441b44943c16be0e6e23c5a955bb971537ea3289ae8016fbf33fffe1fd210f"
