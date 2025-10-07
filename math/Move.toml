@@ -1,6 +1,7 @@
 [package]
 name = "math"
 version = "0.0.1"
+published-at = "0x81c408448d0d57b3e371ea94de1d40bf852784d3e225de1e74acab3e8395c18f"
 
 [dependencies.Sui]
 git = "https://github.com/MystenLabs/sui.git"
@@ -9,4 +10,4 @@ rev = "mainnet"
 
 [addresses]
 sui = "0x2"
-math = "0x0"
+math = "0xd899cf7d2b5db716bd2cf55599fb0d5ee38a3061e7b6bb6eebf73fa5bc4c81ca"
