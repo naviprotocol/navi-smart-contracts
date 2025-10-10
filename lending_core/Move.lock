@@ -2,7 +2,7 @@
 
 [move]
 version = 3
-manifest_digest = "6F7D94BDDE386112572A4072B81877BC791166442CD94552A77DB27F4478A8DE"
+manifest_digest = "BB6229F4C1310150EE4A0CD86DF1CDA96CD170E611D70B537CC3A53AE2045451"
 deps_digest = "F9B494B64F0615AED0E98FC12A85B85ECD2BC5185C22D30E7F67786BB52E507C"
 
 dependencies = [
@@ -52,7 +52,7 @@ dependencies = [
 
 [[move.package]]
 id = "math"
-source = { local = "../math" }
+source = { git = "https://github.com/naviprotocol/navi-smart-contracts.git", rev = "main", subdir = "math" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
@@ -60,7 +60,7 @@ dependencies = [
 
 [[move.package]]
 id = "oracle"
-source = { local = "../oracle" }
+source = { git = "https://github.com/naviprotocol/navi-smart-contracts.git", rev = "main", subdir = "oracle" }
 
 dependencies = [
   { id = "Pyth", name = "Pyth" },
@@ -87,13 +87,13 @@ dependencies = [
 
 [[move.package]]
 id = "utils"
-source = { local = "../utils" }
+source = { git = "https://github.com/naviprotocol/navi-smart-contracts.git", rev = "main", subdir = "utils" }
 
 dependencies = [
   { id = "Sui", name = "Sui" },
 ]
 
 [move.toolchain-version]
-compiler-version = "1.55.0"
+compiler-version = "1.57.2"
 edition = "2024"
 flavor = "sui"
