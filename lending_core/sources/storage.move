@@ -11,6 +11,8 @@ module lending_core::storage {
     use sui::clock::{Self, Clock};
     use sui::coin::{Self, CoinMetadata};
     use sui::tx_context::{Self, TxContext};
+    use sui::dynamic_field::{Self};
+    use sui_system::sui_system::{SuiSystemState};
 
     use math::ray_math;
     use lending_core::pool::{Self, Pool, PoolAdminCap};
@@ -20,6 +22,7 @@ module lending_core::storage {
 
     friend lending_core::logic;
     friend lending_core::flash_loan;
+    friend lending_core::manage;
 
     struct OwnerCap has key, store {
         id: UID,
@@ -121,13 +124,29 @@ module lending_core::storage {
         after: u256,
         index: u256,
     }
+
+    // TODO: add the following events
+    // struct LiquidatorSet has copy, drop {
+    //     liquidator: address,
+    //     user: address,
+    //     is_liquidatable: bool
+    // } 
+
+    // struct ProtectedUserSet has copy, drop {
+    //     user: address,
+    //     is_protected: address
+    // } 
+
+    // === dynamic field keys ===
+    struct DESIGNATED_LIQUIDATORS_KEY has copy, drop, store {}
+    struct PROTECTED_LIQUIDATION_USERS_KEY has copy, drop, store {}
     
     // Entry
     fun init(ctx: &mut TxContext) {
         transfer::public_transfer(StorageAdminCap {id: object::new(ctx)}, tx_context::sender(ctx));
         transfer::public_transfer(OwnerCap {id: object::new(ctx)}, tx_context::sender(ctx));
 
-        transfer::share_object(Storage {
+        let storage = Storage {
             id: object::new(ctx),
             version: version::this_version(),
             paused: false,
@@ -135,7 +154,11 @@ module lending_core::storage {
             reserves_count: 0,
             users: vector::empty<address>(),
             user_info: table::new<address, UserInfo>(ctx),
-        })
+        };
+
+        init_protected_liquidation_fields(&mut storage, ctx);
+
+        transfer::share_object(storage);
     }
 
     public fun when_not_paused(storage: &Storage) {
@@ -636,6 +659,20 @@ module lending_core::storage {
         recipient: address,
         ctx: &mut TxContext
     ) {
+        abort error::invalid_function_call()
+    }
+
+    public fun withdraw_treasury_v2<CoinType>(
+        _: &StorageAdminCap,
+        pool_admin_cap: &PoolAdminCap,
+        storage: &mut Storage,
+        asset: u8,
+        pool: &mut Pool<CoinType>,
+        amount: u64,
+        recipient: address,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ) {
         let coin_type = get_coin_type(storage, asset);
         assert!(coin_type == type_name::into_string(type_name::get<CoinType>()), error::invalid_coin_type());
 
@@ -658,11 +695,12 @@ module lending_core::storage {
 
         let withdrawable_amount = pool::unnormal_amount(pool, (withdrawable_value as u64));
 
-        pool::withdraw_reserve_balance<CoinType>(
+        pool::withdraw_reserve_balance_v2<CoinType>(
             pool_admin_cap,
             pool,
             withdrawable_amount,
             recipient,
+            system_state,
             ctx
         );
 
@@ -692,6 +730,65 @@ module lending_core::storage {
 
     fun percentage_ray_validation(value: u256) {
         assert!(value <= ray_math::ray(), error::invalid_value());
+    }
+
+    public fun mint_owner_cap(_: &StorageAdminCap, recipient: address, ctx: &mut TxContext) {
+        transfer::public_transfer(OwnerCap {id: object::new(ctx)}, recipient);
+    }
+
+    public(friend) fun init_protected_liquidation_fields(storage: &mut Storage,  ctx: &mut TxContext) {
+        let designated_liquidators = table::new<address, Table<address, bool>>(ctx);
+        let protected_liquidation_users = table::new<address, bool>(ctx);
+        dynamic_field::add(&mut storage.id, DESIGNATED_LIQUIDATORS_KEY {}, designated_liquidators);
+        dynamic_field::add(&mut storage.id, PROTECTED_LIQUIDATION_USERS_KEY {}, protected_liquidation_users);
+    }
+
+    public(friend) fun set_designated_liquidators(storage: &mut Storage, liquidator: address, user: address, is_designated: bool, ctx: &mut TxContext) {
+        version_verification(storage);
+        let designated_liquidators = dynamic_field::borrow_mut(&mut storage.id, DESIGNATED_LIQUIDATORS_KEY {});
+        if (!table::contains(designated_liquidators, liquidator)) {
+            table::add(designated_liquidators, liquidator, table::new<address, bool>(ctx));
+        };
+
+        let user_designated_liquidators = table::borrow_mut(designated_liquidators, liquidator);
+        if (!table::contains(user_designated_liquidators, user)) {
+            table::add(user_designated_liquidators, user, is_designated);
+        } else {
+            *table::borrow_mut(user_designated_liquidators, user) = is_designated;
+        }
+    }
+
+    public(friend) fun set_protected_liquidation_users(storage: &mut Storage, user: address, is_protected: bool) {
+        version_verification(storage);
+        let protected_liquidation_users = dynamic_field::borrow_mut(&mut storage.id, PROTECTED_LIQUIDATION_USERS_KEY {});
+        if (!table::contains(protected_liquidation_users, user)) {
+            table::add(protected_liquidation_users, user, is_protected);
+        } else {
+            *table::borrow_mut(protected_liquidation_users, user) = is_protected;
+        }
+    }
+
+    public fun is_liquidatable(storage: &mut Storage, liquidator: address, user: address): bool {
+        let protected_liquidation_users = dynamic_field::borrow<PROTECTED_LIQUIDATION_USERS_KEY ,Table<address, bool>>(&storage.id, PROTECTED_LIQUIDATION_USERS_KEY {});
+        let designated_liquidators = dynamic_field::borrow<DESIGNATED_LIQUIDATORS_KEY ,Table<address, Table<address, bool>>>(&storage.id, DESIGNATED_LIQUIDATORS_KEY {});
+
+        if (!table::contains(protected_liquidation_users, user) || !*table::borrow(protected_liquidation_users, user)) { // liquidatable if not protected or protection is false
+            return true
+        } else if (!table::contains(designated_liquidators, liquidator)) { // liquidatable if not designated
+            return false
+        };
+
+        // the user is protected, so we need to check if the liquidator is designated for the user
+        let user_designated_liquidators = table::borrow(designated_liquidators, liquidator);
+        if (!table::contains(user_designated_liquidators, user)) {
+            return false  // liquidator is designated for other users, but not this one
+        } else {
+            return *table::borrow(user_designated_liquidators, user)
+        }
+    }
+
+    public fun when_liquidatable(storage: &mut Storage, liquidator: address, user: address) {
+        assert!(is_liquidatable(storage, liquidator, user), error::not_liquidatable());
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -747,6 +844,91 @@ module lending_core::storage {
             coin_metadata,
             ctx
         )
+    }
+
+    #[test_only]
+    public fun init_reserve_without_metadata_for_testing<CoinType>(
+        _: &StorageAdminCap,
+        pool_admin_cap: &PoolAdminCap,
+        clock: &Clock,
+        storage: &mut Storage,
+        oracle_id: u8,
+        is_isolated: bool,
+        supply_cap_ceiling: u256,
+        borrow_cap_ceiling: u256,
+        base_rate: u256,
+        optimal_utilization: u256,
+        multiplier: u256,
+        jump_rate_multiplier: u256,
+        reserve_factor: u256,
+        ltv: u256,
+        treasury_factor: u256,
+        liquidation_ratio: u256,
+        liquidation_bonus: u256,
+        liquidation_threshold: u256,
+        decimals: u8,
+        ctx: &mut TxContext
+    ) {
+        version_verification(storage);
+
+        let current_idx = storage.reserves_count;
+        assert!(current_idx < constants::max_number_of_reserves(), error::no_more_reserves_allowed());
+        reserve_validation<CoinType>(storage);
+
+        percentage_ray_validation(borrow_cap_ceiling);
+        percentage_ray_validation(optimal_utilization);
+        percentage_ray_validation(reserve_factor);
+        percentage_ray_validation(treasury_factor);
+        percentage_ray_validation(liquidation_ratio);
+        percentage_ray_validation(liquidation_bonus);
+
+        percentage_ray_validation(ltv);
+        percentage_ray_validation(liquidation_threshold);
+        
+        let reserve_data = ReserveData {
+            id: storage.reserves_count,
+            oracle_id: oracle_id,
+            coin_type: type_name::into_string(type_name::get<CoinType>()),
+            is_isolated: is_isolated,
+            supply_cap_ceiling: supply_cap_ceiling,
+            borrow_cap_ceiling: borrow_cap_ceiling,
+            current_supply_rate: 0,
+            current_borrow_rate: 0,
+            current_supply_index: ray_math::ray(),
+            current_borrow_index: ray_math::ray(),
+            ltv: ltv,
+            treasury_factor: treasury_factor,
+            treasury_balance: 0,
+            supply_balance: TokenBalance {
+                user_state: table::new<address, u256>(ctx),
+                total_supply: 0,
+            },
+            borrow_balance: TokenBalance {
+                user_state: table::new<address, u256>(ctx),
+                total_supply: 0,
+            },
+            last_update_timestamp: clock::timestamp_ms(clock),
+            borrow_rate_factors: BorrowRateFactors {
+                base_rate: base_rate,
+                multiplier: multiplier,
+                jump_rate_multiplier: jump_rate_multiplier,
+                reserve_factor: reserve_factor,
+                optimal_utilization: optimal_utilization,
+            },
+            liquidation_factors: LiquidationFactors {
+                ratio: liquidation_ratio,
+                bonus: liquidation_bonus,
+                threshold: liquidation_threshold,
+            },
+            reserve_field_a: 0,
+            reserve_field_b: 0,
+            reserve_field_c: 0
+        };
+
+        table::add(&mut storage.reserves, current_idx, reserve_data);
+        storage.reserves_count = current_idx + 1;
+
+        pool::create_pool<CoinType>(pool_admin_cap, decimals, ctx);
     }
 
     #[test_only]

@@ -16,6 +16,7 @@ module lending_core::incentive_v3 {
     use sui::balance::{Self, Balance};
     use sui::vec_map::{Self, VecMap};
     use sui::tx_context::{Self, TxContext};
+    use sui::dynamic_field::{Self};
 
     use math::ray_math::{Self};
     use lending_core::error::{Self};
@@ -28,6 +29,7 @@ module lending_core::incentive_v3 {
     use lending_core::incentive_v2::{Self, Incentive as IncentiveV2};
     use oracle::oracle::{PriceOracle};
 
+    use sui_system::sui_system::{SuiSystemState};
 
     friend lending_core::manage;
 
@@ -155,6 +157,29 @@ module lending_core::incentive_v3 {
         rule_indices: vector<u256>,
     }
 
+    struct AssetBorrowFeeRateUpdated has copy, drop {
+        sender: address,
+        asset_id: u8,
+        user: address,
+        rate: u64,
+    }
+
+    struct AssetBorrowFeeRateRemoved has copy, drop {
+        sender: address,
+        asset_id: u8,
+        user: address,
+    }
+
+    struct BorrowFeeDeposited has copy, drop {
+        sender: address,
+        coin_type: String,
+        fee: u64
+    }
+
+    // === dynamic field keys ===
+    struct ASSET_BORROW_FEES_KEY has copy, drop, store {}
+    struct USER_BORROW_FEES_KEY has copy, drop, store {}
+
     // Functions
     public fun version(incentive: &Incentive): u64 {
         incentive.version
@@ -223,6 +248,8 @@ module lending_core::incentive_v3 {
             borrow_fee_rate: 0,
             fee_balance: bag::new(ctx),
         };
+
+        init_borrow_fee_fields(&mut i, ctx);
 
         transfer::share_object(i);
         emit(IncentiveCreated{
@@ -322,6 +349,87 @@ module lending_core::incentive_v3 {
         });
     }
 
+    public(friend) fun init_borrow_fee_fields(incentive: &mut Incentive, ctx: &mut TxContext) {
+        let asset_borrow_fees = table::new<u8, u64>(ctx);
+        let user_borrow_fees = table::new<address, Table<u8, u64>>(ctx);
+        dynamic_field::add(&mut incentive.id, ASSET_BORROW_FEES_KEY {}, asset_borrow_fees);
+        dynamic_field::add(&mut incentive.id, USER_BORROW_FEES_KEY {}, user_borrow_fees);
+    }
+
+    // set the borrow fee rate for the asset
+    public(friend) fun set_asset_borrow_fee_rate(incentive: &mut Incentive, asset_id: u8, fee_rate: u64, ctx: &TxContext) {
+        version_verification(incentive);
+        assert!(fee_rate <= constants::percentage_benchmark() / 10, error::invalid_value());
+        let asset_borrow_fees = dynamic_field::borrow_mut(&mut incentive.id, ASSET_BORROW_FEES_KEY {});
+        if (!table::contains(asset_borrow_fees, asset_id)) {
+            table::add(asset_borrow_fees, asset_id, fee_rate);
+        } else {
+            *table::borrow_mut(asset_borrow_fees, asset_id) = fee_rate;
+        };
+
+        emit(AssetBorrowFeeRateUpdated{
+            sender: tx_context::sender(ctx),
+            asset_id: asset_id,
+            user: @0x0,
+            rate: fee_rate,
+        });
+    }
+
+    // if we want the asset uses default fee rate
+    public(friend) fun remove_asset_borrow_fee_rate(incentive: &mut Incentive, asset_id: u8, ctx: &TxContext) {
+        version_verification(incentive);
+        let asset_borrow_fees = dynamic_field::borrow_mut<ASSET_BORROW_FEES_KEY ,Table<u8, u64>>(&mut incentive.id, ASSET_BORROW_FEES_KEY {});
+        if (table::contains(asset_borrow_fees, asset_id)) {
+            table::remove(asset_borrow_fees, asset_id);
+        };
+
+        emit(AssetBorrowFeeRateRemoved{
+            sender: tx_context::sender(ctx),
+            asset_id: asset_id,
+            user: @0x0,
+        });
+    }
+
+    // set the user fee rate
+    public(friend) fun set_user_borrow_fee_rate(incentive: &mut Incentive, user: address, asset_id: u8, fee_rate: u64, ctx: &mut TxContext) {
+        version_verification(incentive);
+        assert!(fee_rate <= constants::percentage_benchmark() / 10, error::invalid_value());
+        let user_borrow_fees = dynamic_field::borrow_mut(&mut incentive.id, USER_BORROW_FEES_KEY {});
+        if (!table::contains(user_borrow_fees, user)) {
+            table::add(user_borrow_fees, user, table::new<u8, u64>(ctx));
+        };
+        let user_borrow_fee_rates = table::borrow_mut(user_borrow_fees, user);
+        if (!table::contains(user_borrow_fee_rates, asset_id)) {
+            table::add(user_borrow_fee_rates, asset_id, fee_rate);
+        } else {
+            *table::borrow_mut(user_borrow_fee_rates, asset_id) = fee_rate;
+        };
+        emit(AssetBorrowFeeRateUpdated{
+            sender: tx_context::sender(ctx),
+            asset_id: asset_id,
+            user: user,
+            rate: fee_rate,
+        });
+    }
+
+    // if we want the user uses default fee rate
+    public(friend) fun remove_user_borrow_fee_rate(incentive: &mut Incentive, user: address, asset_id: u8, ctx: &TxContext) {
+        version_verification(incentive);
+        let user_borrow_fees = dynamic_field::borrow_mut<USER_BORROW_FEES_KEY ,Table<address, Table<u8, u64>>>(&mut incentive.id, USER_BORROW_FEES_KEY {});
+        if (table::contains(user_borrow_fees, user)) {
+            let user_borrow_fee_rates = table::borrow_mut(user_borrow_fees, user);
+            if (table::contains(user_borrow_fee_rates, asset_id)) {
+                table::remove(user_borrow_fee_rates, asset_id);
+            };
+        };
+
+        emit(AssetBorrowFeeRateRemoved{
+            sender: tx_context::sender(ctx),
+            asset_id: asset_id,
+            user: user,
+        });
+    }
+
     public(friend) fun withdraw_borrow_fee<T>(incentive: &mut Incentive, amount: u64, ctx: &TxContext): Balance<T> {
         version_verification(incentive); // version check
 
@@ -342,7 +450,7 @@ module lending_core::incentive_v3 {
         withdraw_balance
     }
 
-    fun deposit_borrow_fee<T>(incentive: &mut Incentive, balance_mut: &mut Balance<T>, fee_amount: u64) {
+    fun deposit_borrow_fee<T>(incentive: &mut Incentive, balance_mut: &mut Balance<T>, fee_amount: u64, sender: address) {
         if (fee_amount > 0) {
             let type_name = type_name::get<T>();
             let fee = balance::split(balance_mut, fee_amount);
@@ -353,6 +461,12 @@ module lending_core::incentive_v3 {
             } else {
                 bag::add(&mut incentive.fee_balance, type_name, fee);
             };
+
+            emit(BorrowFeeDeposited{
+                sender: sender,
+                coin_type: type_name::into_string(type_name),
+                fee: fee_amount
+            });
         }
     }
 
@@ -830,6 +944,7 @@ module lending_core::incentive_v3 {
         lending::deposit_on_behalf_of_user<CoinType>(clock, storage, pool, asset, user, deposit_coin, amount, ctx);
     }
 
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public entry fun entry_withdraw<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -850,6 +965,29 @@ module lending_core::incentive_v3 {
         transfer::public_transfer(_coin, user);
     }
 
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public entry fun entry_withdraw_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ) {
+        let user = tx_context::sender(ctx);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
+        update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
+
+        let _balance = lending::withdraw_coin_v2<CoinType>(clock, oracle, storage, pool, asset, amount, system_state, ctx);
+        let _coin = coin::from_balance(_balance, ctx);
+        transfer::public_transfer(_coin, user);
+    }
+
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public fun withdraw_with_account_cap<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -868,6 +1006,28 @@ module lending_core::incentive_v3 {
         lending::withdraw_with_account_cap<CoinType>(clock, oracle, storage, pool, asset, amount, account_cap)
     }
 
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public fun withdraw_with_account_cap_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        account_cap: &AccountCap,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        let owner = account::account_owner(account_cap);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
+        update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
+
+        lending::withdraw_with_account_cap_v2<CoinType>(clock, oracle, storage, pool, asset, amount, account_cap, system_state, ctx)
+    }
+
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public fun withdraw<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -887,6 +1047,28 @@ module lending_core::incentive_v3 {
         return _balance
     }
 
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public fun withdraw_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        let user = tx_context::sender(ctx);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
+        update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
+
+        let _balance = lending::withdraw_coin_v2<CoinType>(clock, oracle, storage, pool, asset, amount, system_state, ctx);
+        return _balance
+    }
+
+    // deprecated
     fun get_borrow_fee(incentive: &Incentive, amount: u64): u64 {
         if (incentive.borrow_fee_rate > 0) {
             amount * incentive.borrow_fee_rate / constants::percentage_benchmark()
@@ -895,6 +1077,29 @@ module lending_core::incentive_v3 {
         }
     }
 
+    public fun get_borrow_fee_v2(incentive: &Incentive, user: address, asset_id: u8, amount: u64): u64 {
+        let asset_borrow_fees = dynamic_field::borrow<ASSET_BORROW_FEES_KEY ,Table<u8, u64>>(&incentive.id, ASSET_BORROW_FEES_KEY {});
+        
+        let fee_rate = incentive.borrow_fee_rate;
+
+        if (table::contains(asset_borrow_fees, asset_id)) {
+                fee_rate = *table::borrow(asset_borrow_fees, asset_id)
+        };
+
+        let user_borrow_fees = dynamic_field::borrow<USER_BORROW_FEES_KEY ,Table<address, Table<u8, u64>>>(&incentive.id, USER_BORROW_FEES_KEY {});
+        if (table::contains(user_borrow_fees, user) 
+            && (table::contains(table::borrow(user_borrow_fees, user), asset_id))) {
+                fee_rate = *table::borrow(table::borrow(user_borrow_fees, user), asset_id)
+        };
+
+        if (fee_rate > 0) {
+            amount * fee_rate / constants::percentage_benchmark()
+        } else {
+            0
+        }
+    }
+
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public entry fun entry_borrow<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -910,16 +1115,44 @@ module lending_core::incentive_v3 {
         incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
-        let fee = get_borrow_fee(incentive_v3, amount);
+        let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
 
-        let _balance =  lending::borrow_coin<CoinType>(clock, oracle, storage, pool, asset, amount + fee, ctx);
+        let _balance = lending::borrow_coin<CoinType>(clock, oracle, storage, pool, asset, amount + fee, ctx);
 
-        deposit_borrow_fee(incentive_v3, &mut _balance, fee);
+        deposit_borrow_fee(incentive_v3, &mut _balance, fee, user);
 
         let _coin = coin::from_balance(_balance, ctx);
         transfer::public_transfer(_coin, tx_context::sender(ctx));
     }
 
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public entry fun entry_borrow_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ) {
+        let user = tx_context::sender(ctx);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
+        update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
+
+        let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
+
+        let _balance = lending::borrow_coin_v2<CoinType>(clock, oracle, storage, pool, asset, amount + fee, system_state, ctx);
+
+        deposit_borrow_fee(incentive_v3, &mut _balance, fee, user);
+
+        let _coin = coin::from_balance(_balance, ctx);
+        transfer::public_transfer(_coin, tx_context::sender(ctx));
+    }
+
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public fun borrow_with_account_cap<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -929,21 +1162,49 @@ module lending_core::incentive_v3 {
         amount: u64,
         incentive_v2: &mut IncentiveV2,
         incentive_v3: &mut Incentive,
-        account_cap: &AccountCap,
+        account_cap: &AccountCap
     ): Balance<CoinType> {
         let owner = account::account_owner(account_cap);
         incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
 
-        let fee = get_borrow_fee(incentive_v3, amount);
+        let fee = get_borrow_fee_v2(incentive_v3, owner, asset, amount);
 
         let _balance = lending::borrow_with_account_cap<CoinType>(clock, oracle, storage, pool, asset, amount + fee, account_cap);
 
-        deposit_borrow_fee(incentive_v3, &mut _balance, fee);
+        deposit_borrow_fee(incentive_v3, &mut _balance, fee, owner);
 
         _balance
     }
 
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public fun borrow_with_account_cap_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        account_cap: &AccountCap,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        let owner = account::account_owner(account_cap);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
+        update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
+
+        let fee = get_borrow_fee_v2(incentive_v3, owner, asset, amount);
+
+        let _balance = lending::borrow_with_account_cap_v2<CoinType>(clock, oracle, storage, pool, asset, amount + fee, account_cap, system_state, ctx);
+
+        deposit_borrow_fee(incentive_v3, &mut _balance, fee, owner);
+
+        _balance
+    }
+
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public fun borrow<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -959,11 +1220,37 @@ module lending_core::incentive_v3 {
         incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
-        let fee = get_borrow_fee(incentive_v3, amount);
+        let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
 
         let _balance = lending::borrow_coin<CoinType>(clock, oracle, storage, pool, asset, amount + fee, ctx);
 
-        deposit_borrow_fee(incentive_v3, &mut _balance, fee);
+        deposit_borrow_fee(incentive_v3, &mut _balance, fee, user);
+
+        _balance
+    }
+
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public fun borrow_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        let user = tx_context::sender(ctx);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
+        update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
+
+        let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
+
+        let _balance = lending::borrow_coin_v2<CoinType>(clock, oracle, storage, pool, asset, amount + fee, system_state, ctx);
+
+        deposit_borrow_fee(incentive_v3, &mut _balance, fee, user);
 
         _balance
     }
@@ -1059,6 +1346,7 @@ module lending_core::incentive_v3 {
         return _balance
     }
 
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public entry fun entry_liquidation<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -1091,6 +1379,63 @@ module lending_core::incentive_v3 {
             collateral_pool,
             liquidate_user,
             liquidate_amount,
+            ctx
+        );
+
+        // handle excess balance
+        let _excess_value = balance::value(&_excess_balance);
+        if (_excess_value > 0) {
+            let _coin = coin::from_balance(_excess_balance, ctx);
+            transfer::public_transfer(_coin, sender);
+        } else {
+            balance::destroy_zero(_excess_balance)
+        };
+
+        // handle bonus balance
+        let _bonus_value = balance::value(&_bonus_balance);
+        if (_bonus_value > 0) {
+            let _coin = coin::from_balance(_bonus_balance, ctx);
+            transfer::public_transfer(_coin, sender);
+        } else {
+            balance::destroy_zero(_bonus_balance)
+        }
+    }
+
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public entry fun entry_liquidation_v2<DebtCoinType, CollateralCoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        debt_asset: u8,
+        debt_pool: &mut Pool<DebtCoinType>,
+        debt_coin: Coin<DebtCoinType>,
+        collateral_asset: u8,
+        collateral_pool: &mut Pool<CollateralCoinType>,
+        liquidate_user: address,
+        liquidate_amount: u64,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        system_state: &mut SuiSystemState, 
+        ctx: &mut TxContext
+    ) {
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, collateral_asset, @0x0);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, debt_asset, @0x0);
+
+        update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
+        update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
+        let sender = tx_context::sender(ctx);
+        let (_bonus_balance, _excess_balance) = lending::liquidation_v2(
+            clock,
+            oracle,
+            storage,
+            debt_asset,
+            debt_pool,
+            debt_coin,
+            collateral_asset,
+            collateral_pool,
+            liquidate_user,
+            liquidate_amount,
+            system_state,
             ctx,
         );
 
@@ -1113,6 +1458,7 @@ module lending_core::incentive_v3 {
         }
     }
 
+    // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public fun liquidation<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -1143,6 +1489,43 @@ module lending_core::incentive_v3 {
             collateral_asset,
             collateral_pool,
             liquidate_user,
+            ctx
+        )
+    }
+
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public fun liquidation_v2<DebtCoinType, CollateralCoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        debt_asset: u8,
+        debt_pool: &mut Pool<DebtCoinType>,
+        debt_balance: Balance<DebtCoinType>,
+        collateral_asset: u8,
+        collateral_pool: &mut Pool<CollateralCoinType>,
+        liquidate_user: address,
+        incentive_v2: &mut IncentiveV2,
+        incentive_v3: &mut Incentive,
+        system_state: &mut SuiSystemState, 
+        ctx: &mut TxContext
+    ): (Balance<CollateralCoinType>, Balance<DebtCoinType>) {
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, collateral_asset, @0x0);
+        incentive_v2::update_reward_all(clock, incentive_v2, storage, debt_asset, @0x0);
+
+        update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
+        update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
+
+        lending::liquidation_non_entry_v2(
+            clock,
+            oracle,
+            storage,
+            debt_asset,
+            debt_pool,
+            debt_balance,
+            collateral_asset,
+            collateral_pool,
+            liquidate_user,
+            system_state,
             ctx,
         )
     }
@@ -1201,6 +1584,11 @@ module lending_core::incentive_v3 {
     #[test_only]
     public fun get_borrow_fee_for_testing(incentive_v3: &Incentive, amount: u64): u64 {
         get_borrow_fee(incentive_v3, amount)
+    }
+
+    #[test_only]
+    public fun get_borrow_fee_v2_for_testing(incentive_v3: &mut Incentive, user: address, asset_id: u8, amount: u64): u64 {
+        get_borrow_fee_v2(incentive_v3, user, asset_id, amount)
     }
 
     #[test_only]

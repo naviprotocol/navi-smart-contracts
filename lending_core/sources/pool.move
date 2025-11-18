@@ -9,8 +9,16 @@ module lending_core::pool {
     use sui::object::{Self, UID};
     use sui::balance::{Self, Balance};
     use sui::tx_context::{Self, TxContext};
+    use sui::dynamic_field::{Self};
+    use sui::vec_map::{VecMap};
 
     use lending_core::error::{Self};
+    use lending_core::pool_manager::{Self, SuiPoolManager};
+
+    use sui_system::sui_system::{SuiSystemState};
+    use sui::sui::{SUI};
+    use liquid_staking::stake_pool::{StakePool, OperatorCap};
+    use liquid_staking::cert::{Metadata, CERT};
 
     friend lending_core::lending;
     friend lending_core::storage;
@@ -64,6 +72,9 @@ module lending_core::pool {
         poolId: address,
     }
 
+    // === dynamic field keys ===
+    struct PoolManagerKey has copy, drop, store {}
+
     // Entry
     fun init(ctx: &mut TxContext) {
         transfer::public_transfer(PoolAdminCap {
@@ -84,7 +95,7 @@ module lending_core::pool {
         emit(PoolCreate {creator: tx_context::sender(ctx)})
     }
 
-    // Putting coin into the pool
+    // It's used for direct deposit without updating pool manager
     public(friend) fun deposit<CoinType>(pool: &mut Pool<CoinType>, mint_coin: Coin<CoinType>, ctx: &mut TxContext) {
         let mint_value = coin::value(&mint_coin);
         let mint_balance = coin::into_balance(mint_coin);
@@ -101,6 +112,11 @@ module lending_core::pool {
         let balance_value = balance::value(&deposit_balance);
         balance::join(&mut pool.balance, deposit_balance);
 
+        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+            let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+            pool_manager::update_deposit(manage, balance_value);
+        };
+
         emit(PoolDeposit {
             sender: user,
             amount: balance_value,
@@ -108,7 +124,8 @@ module lending_core::pool {
         })
     }
 
-    // Transferrung part of coin to the user
+    // unused
+    // warning: this function doesn't track pool balance for fund manager
     public(friend) fun withdraw<CoinType>(pool: &mut Pool<CoinType>, amount: u64, recipient: address, ctx: &mut TxContext) {
         let withdraw_balance = balance::split(&mut pool.balance, amount);
         let withdraw_coin = coin::from_balance(withdraw_balance, ctx);
@@ -128,7 +145,64 @@ module lending_core::pool {
             return _zero
         };
 
+        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+            abort error::invalid_function_call()
+        };
+
         let _balance = balance::split(&mut pool.balance, amount);
+        emit(PoolWithdraw {
+            sender: user,
+            recipient: user,
+            amount: amount,
+            pool: type_name::into_string(type_name::get<CoinType>()),
+        });
+
+        return _balance
+    }
+
+    // for repay only, no need to prepare fund because it's for excess amount
+    // directly withdraw balance without preparing fund
+    public(friend) fun direct_withdraw_balance_v2<CoinType>(pool: &mut Pool<CoinType>, amount: u64, user: address): Balance<CoinType> {
+        if (amount == 0) {
+            let _zero = balance::zero<CoinType>();
+            return _zero
+        };
+
+        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+            let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+            pool_manager::update_withdraw(manage, amount);
+        };
+
+        let _balance = balance::split(&mut pool.balance, amount);
+        emit(PoolWithdraw {
+            sender: user,
+            recipient: user,
+            amount: amount,
+            pool: type_name::into_string(type_name::get<CoinType>()),
+        });
+
+        return _balance
+    }
+
+
+    public(friend) fun withdraw_balance_v2<CoinType>(pool: &mut Pool<CoinType>, amount: u64, user: address, system_state: &mut SuiSystemState, ctx: &mut TxContext): Balance<CoinType> {
+        if (amount == 0) {
+            let _zero = balance::zero<CoinType>();
+            return _zero
+        };
+
+        let _balance = if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+            let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+            let _prepare_balance = pool_manager::prepare_before_withdraw<CoinType>(manage, amount, balance::value(&pool.balance), system_state, ctx);
+            balance::join(&mut pool.balance, _prepare_balance);
+            let _withdraw_balance = balance::split(&mut pool.balance, amount);
+            pool_manager::update_withdraw(manage, amount);
+            _withdraw_balance
+        } else {
+            let _withdraw_balance = balance::split(&mut pool.balance, amount);
+            _withdraw_balance
+        };
+        
         emit(PoolWithdraw {
             sender: user,
             recipient: user,
@@ -144,6 +218,10 @@ module lending_core::pool {
         assert!(total_supply >= deposit_amount, error::insufficient_balance());
 
         let decrease_balance = balance::split(&mut pool.balance, deposit_amount);
+        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+            let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+            pool_manager::update_withdraw(manage, deposit_amount);
+        };
         balance::join(&mut pool.treasury_balance, decrease_balance);
     }
 
@@ -161,8 +239,27 @@ module lending_core::pool {
         pool: &mut Pool<CoinType>,
         amount: u64,
         recipient: address,
+        system_state: &mut SuiSystemState,
         ctx: &mut TxContext
     ) {
+        abort error::invalid_function_call()
+    }
+
+    public(friend) fun withdraw_reserve_balance_v2<CoinType>(
+        _: &PoolAdminCap,
+        pool: &mut Pool<CoinType>,
+        amount: u64,
+        recipient: address,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ) {
+        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+            let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+            let _prepare_balance = pool_manager::prepare_before_withdraw<CoinType>(manage, amount, balance::value(&pool.balance), system_state, ctx);
+            balance::join(&mut pool.balance, _prepare_balance);
+            pool_manager::update_withdraw(manage, amount);
+        };
+
         let total_supply = balance::value(&pool.balance);
         assert!(total_supply >= amount, error::insufficient_balance());
 
@@ -220,6 +317,60 @@ module lending_core::pool {
         &pool.id
     }
 
+    // ------Pool Manager------
+    public fun init_sui_pool_manager(_: &PoolAdminCap, pool: &mut Pool<SUI>, stake_pool: StakePool, metadata: Metadata<CERT>, target_sui_amount: u64, ctx: &mut TxContext) {
+        assert!(!dynamic_field::exists_(&pool.id, PoolManagerKey {}), 0);
+        let pool_manager = pool_manager::new(stake_pool, metadata, balance::value(&pool.balance), target_sui_amount, ctx);
+        dynamic_field::add(&mut pool.id, PoolManagerKey {}, pool_manager);
+    }
+
+    public fun enable_manage(_: &PoolAdminCap, pool: &mut Pool<SUI>) {
+        let pool_manager = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+        pool_manager::enable_manage(pool_manager);
+    }
+
+    public fun disable_manage(_: &PoolAdminCap, pool: &mut Pool<SUI>) {
+        let pool_manager = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+        pool_manager::disable_manage(pool_manager, balance::value(&pool.balance));
+    }
+
+    public fun refresh_stake(pool: &mut Pool<SUI>, system_state: &mut SuiSystemState, ctx: &mut TxContext) {
+        let pool_manager = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+        pool_manager::refresh_stake(pool_manager, &mut pool.balance, system_state, ctx);
+    }
+
+    public fun withdraw_vsui_from_treasury(_: &PoolAdminCap, pool: &mut Pool<SUI>, recipient: address, system_state: &mut SuiSystemState, ctx: &mut TxContext) {
+        let pool_manager = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+        let vsui_balance = pool_manager::take_vsui_from_treasury(pool_manager, balance::value(&pool.balance), system_state, ctx);
+        let vsui_coin = coin::from_balance(vsui_balance, ctx);
+        transfer::public_transfer(vsui_coin, recipient);
+    }
+
+    public fun set_target_sui_amount(_: &PoolAdminCap, pool: &mut Pool<SUI>, target_sui_amount: u64, system_state: &mut SuiSystemState, ctx: &mut TxContext) {
+        let pool_manager = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+        pool_manager::set_target_sui_amount(pool_manager, target_sui_amount);
+        pool_manager::refresh_stake(pool_manager, &mut pool.balance, system_state, ctx);
+    }
+
+    public fun unstake_vsui(pool: &mut Pool<SUI>, system_state: &mut SuiSystemState, vsui_coin: Coin<CERT>, ctx: &mut TxContext): Coin<SUI> {
+        let pool_manager = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+        pool_manager::unstake_vsui(pool_manager, system_state, vsui_coin, ctx)
+    }
+
+    public fun set_validator_weights_vsui(pool: &mut Pool<SUI>, system_state: &mut SuiSystemState,  vsui_operator_cap: &OperatorCap, validator_weights: VecMap<address, u64>, ctx: &mut TxContext) {
+        let pool_manager = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
+        pool_manager::set_validator_weights_vsui(pool_manager, system_state, vsui_operator_cap, validator_weights, ctx)
+    }
+
+    public fun direct_deposit_sui(_: &PoolAdminCap, pool: &mut Pool<SUI>, sui_coin: Coin<SUI>, ctx: &mut TxContext) {
+        deposit(pool, sui_coin, ctx)
+    }
+
+    public fun get_treasury_sui_amount(pool: &Pool<SUI>): u64 {
+        let pool_manager = dynamic_field::borrow(&pool.id, PoolManagerKey {});
+        pool_manager::get_treasury_sui_amount(pool_manager, balance::value(&pool.balance))
+    }
+
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx)
@@ -264,4 +415,13 @@ module lending_core::pool {
         withdraw_balance(pool, amount, user)
     }
 
+    #[test_only]
+    public fun withdraw_balance_v2_for_testing<T>(pool: &mut Pool<T>, amount: u64, user: address, system_state: &mut SuiSystemState, ctx: &mut TxContext): Balance<T> {
+        withdraw_balance_v2(pool, amount, user, system_state, ctx)
+    }
+
+    #[test_only]
+    public fun get_pool_manager<CoinType>(pool: &mut Pool<CoinType>): &mut SuiPoolManager {
+        dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {})
+    }
 }

@@ -10,6 +10,7 @@ module lending_core::error {
     public fun invalid_coin_type(): u64 {1505}
     public fun insufficient_balance(): u64 {1506}
     public fun invalid_value(): u64 {1507}
+    public fun invalid_function_call(): u64 {1508}
 
     public fun user_is_unhealthy(): u64 {1600}
     public fun user_have_no_collateral(): u64 {1601}
@@ -18,6 +19,7 @@ module lending_core::error {
     public fun exceeded_maximum_deposit_cap(): u64 {1604}
     public fun exceeded_maximum_borrow_cap(): u64 {1605}
     public fun user_is_healthy(): u64 {1606}
+    public fun not_liquidatable(): u64 {1607}
 
     public fun no_more_reserves_allowed(): u64 {1700}
     public fun duplicate_reserve(): u64 {1701}

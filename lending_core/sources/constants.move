@@ -11,7 +11,7 @@ module lending_core::constants {
     public fun max_number_of_reserves(): u8 {255}
 
     // version
-    public fun version(): u64 {13}
+    public fun version(): u64 {14}
 
     public fun FlashLoanMultiple(): u64 {10000}
 

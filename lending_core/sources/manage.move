@@ -1,20 +1,23 @@
 module lending_core::manage {
     use std::type_name;
-    use sui::object;
+    use sui::object::{Self, UID};
     use sui::transfer;
     use sui::clock::{Clock};
     use sui::coin::{Self, Coin};
     use sui::tx_context::{Self, TxContext};
-    
     use lending_core::version::{Self};
     use lending_core::error::{Self};
     use lending_core::pool::{Self, Pool};
     use lending_core::storage::{Self, Storage};
-    use lending_core::storage::{StorageAdminCap};
+    use lending_core::storage::{StorageAdminCap, OwnerCap as StorageOwnerCap};
     use lending_core::flash_loan::{Self, Config as FlashLoanConfig};
     use lending_core::incentive_v2::{OwnerCap as IncentiveOwnerCap};
     use lending_core::incentive_v3::{Self, Incentive as IncentiveV3, RewardFund};
-    
+
+    struct BorrowFeeCap has key, store {
+        id: UID,
+    }
+
     public fun create_flash_loan_config(_: &StorageAdminCap, ctx: &mut TxContext) {
         flash_loan::create_config(ctx)
     }
@@ -147,5 +150,43 @@ module lending_core::manage {
 
     public fun set_incentive_v3_borrow_fee_rate(_: &StorageAdminCap, incentive: &mut IncentiveV3, rate: u64, ctx: &mut TxContext) {
         incentive_v3::set_borrow_fee_rate(incentive, rate, ctx)
+    }
+
+    // init
+    public fun init_fields_batch(_: &StorageOwnerCap, storage: &mut Storage, incentive: &mut IncentiveV3, ctx: &mut TxContext) {
+        incentive_v3::init_borrow_fee_fields(incentive, ctx);
+        storage::init_protected_liquidation_fields(storage, ctx)
+    }
+
+    public fun mint_borrow_fee_cap(_: &StorageAdminCap, recipient: address, ctx: &mut TxContext) {
+        transfer::public_transfer(BorrowFeeCap {id: object::new(ctx)}, recipient);
+    }
+
+    public fun set_borrow_fee_rate(_: &BorrowFeeCap, incentive: &mut IncentiveV3, rate: u64, ctx: &mut TxContext) {
+        incentive_v3::set_borrow_fee_rate(incentive, rate, ctx)
+    }
+    
+    public fun set_asset_borrow_fee_rate(_: &BorrowFeeCap, incentive: &mut IncentiveV3, asset_id: u8, rate: u64, ctx: &mut TxContext) {
+        incentive_v3::set_asset_borrow_fee_rate(incentive, asset_id, rate, ctx)
+    }
+
+    public fun set_user_borrow_fee_rate(_: &BorrowFeeCap, incentive: &mut IncentiveV3, user: address, asset_id: u8, rate: u64, ctx: &mut TxContext) {
+        incentive_v3::set_user_borrow_fee_rate(incentive, user, asset_id, rate, ctx)
+    }
+
+    public fun remove_incentive_v3_asset_borrow_fee_rate(_: &BorrowFeeCap, incentive: &mut IncentiveV3, asset_id: u8, ctx: &mut TxContext) {
+        incentive_v3::remove_asset_borrow_fee_rate(incentive, asset_id, ctx)
+    }
+
+    public fun remove_incentive_v3_user_borrow_fee_rate(_: &BorrowFeeCap, incentive: &mut IncentiveV3, user: address, asset_id: u8, ctx: &TxContext) {
+        incentive_v3::remove_user_borrow_fee_rate(incentive, user, asset_id, ctx)
+    }
+
+    public fun set_designated_liquidators(_: &StorageOwnerCap, storage: &mut Storage, liquidator: address, user: address, is_designated: bool, ctx: &mut TxContext) {
+        storage::set_designated_liquidators(storage, liquidator, user, is_designated, ctx)
+    }
+
+    public fun set_protected_liquidation_users(_: &StorageOwnerCap, storage: &mut Storage, user: address, is_protected: bool) {
+        storage::set_protected_liquidation_users(storage, user, is_protected)
     }
 }

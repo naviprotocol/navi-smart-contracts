@@ -18,6 +18,8 @@ module lending_core::flash_loan {
     use lending_core::pool::{Self, Pool};
     use lending_core::storage::{Self, Storage, StorageAdminCap};
 
+    use sui_system::sui_system::{Self, SuiSystemState};
+
     friend lending_core::manage;
     friend lending_core::lending;
 
@@ -153,6 +155,40 @@ module lending_core::flash_loan {
         let to_treasury = _loan_amount * cfg.rate_to_treasury / constants::FlashLoanMultiple();
 
         let _balance = pool::withdraw_balance(_pool, _loan_amount, _user);
+        
+        let _receipt = Receipt<CoinType> {
+            user: _user,
+            asset: *asset_id,
+            amount: _loan_amount,
+            pool: pool_id,
+            fee_to_supplier: to_supplier,
+            fee_to_treasury: to_treasury,
+        };
+
+        emit(FlashLoan {
+            sender: _user,
+            asset: *asset_id,
+            amount: _loan_amount,
+        });
+
+        (_balance, _receipt)
+    }
+
+    public(friend) fun loan_v2<CoinType>(config: &Config, _pool: &mut Pool<CoinType>, _user: address, _loan_amount: u64, sui_system: &mut SuiSystemState, ctx: &mut TxContext): (Balance<CoinType>, Receipt<CoinType>) {
+        version_verification(config);
+        let str_type = type_name::into_string(type_name::get<CoinType>());
+        assert!(table::contains(&config.support_assets, *ascii::as_bytes(&str_type)), error::reserve_not_found());
+        let asset_id = table::borrow(&config.support_assets, *ascii::as_bytes(&str_type));
+        let cfg = table::borrow(&config.assets, *asset_id);
+
+        let pool_id = object::uid_to_address(pool::uid(_pool));
+        assert!(_loan_amount >= cfg.min && _loan_amount <= cfg.max, error::invalid_amount());
+        assert!(cfg.pool_id == pool_id, error::invalid_pool());
+
+        let to_supplier = _loan_amount * cfg.rate_to_supplier / constants::FlashLoanMultiple();
+        let to_treasury = _loan_amount * cfg.rate_to_treasury / constants::FlashLoanMultiple();
+
+        let _balance = pool::withdraw_balance_v2(_pool, _loan_amount, _user, sui_system, ctx);
         
         let _receipt = Receipt<CoinType> {
             user: _user,

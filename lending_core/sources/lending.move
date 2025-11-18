@@ -16,6 +16,8 @@ module lending_core::lending {
     use lending_core::error::{Self};
     use lending_core::flash_loan::{Self, Config as FlashLoanConfig, Receipt as FlashLoanReceipt};
 
+    use sui_system::sui_system::{SuiSystemState};
+
     friend lending_core::incentive_v2;
     friend lending_core::incentive_v3;
 
@@ -212,6 +214,21 @@ module lending_core::lending {
         return _balance
     }
 
+    public(friend) fun withdraw_coin_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        let sender = tx_context::sender(ctx);
+        let _balance = base_withdraw_v2(clock, oracle, storage, pool, asset, amount, sender, system_state, ctx);
+        return _balance
+    }
+
     // Base: Withdraw Function
     fun base_withdraw<CoinType>(
         clock: &Clock,
@@ -247,6 +264,43 @@ module lending_core::lending {
         return _balance
     }
 
+    // Base: Withdraw Function
+    fun base_withdraw_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        user: address,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        storage::when_not_paused(storage);
+        storage::version_verification(storage);
+
+        let normal_withdraw_amount = pool::normal_amount(pool, amount);
+        let normal_withdrawable_amount = logic::execute_withdraw<CoinType>(
+            clock,
+            oracle,
+            storage,
+            asset,
+            user,
+            (normal_withdraw_amount as u256)
+        );
+
+        let withdrawable_amount = pool::unnormal_amount(pool, normal_withdrawable_amount);
+        let _balance = pool::withdraw_balance_v2(pool, withdrawable_amount, user, system_state, ctx);
+        emit(WithdrawEvent {
+            reserve: asset,
+            sender: user,
+            to: user,
+            amount: withdrawable_amount,
+        });
+
+        return _balance
+    }
+
     // Non-Entry: Borrow Function
     public(friend) fun borrow_coin<CoinType>(
         clock: &Clock,
@@ -262,6 +316,21 @@ module lending_core::lending {
         return _balance
     }
 
+    public(friend) fun borrow_coin_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        let sender = tx_context::sender(ctx);
+        let _balance = base_borrow_v2(clock, oracle, storage, pool, asset, amount, sender, system_state, ctx);
+        return _balance
+    }
+
     // Base: Borrow Function
     fun base_borrow<CoinType>(
         clock: &Clock,
@@ -270,7 +339,7 @@ module lending_core::lending {
         pool: &mut Pool<CoinType>,
         asset: u8,
         amount: u64,
-        user: address,
+        user: address
     ): Balance<CoinType> {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
@@ -279,6 +348,33 @@ module lending_core::lending {
         logic::execute_borrow<CoinType>(clock, oracle, storage, asset, user, (normal_borrow_amount as u256));
 
         let _balance = pool::withdraw_balance(pool, amount, user);
+        emit(BorrowEvent {
+            reserve: asset,
+            sender: user,
+            amount: amount
+        });
+
+        return _balance
+    }
+
+    fun base_borrow_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        user: address,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        storage::when_not_paused(storage);
+        storage::version_verification(storage);
+
+        let normal_borrow_amount = pool::normal_amount(pool, amount);
+        logic::execute_borrow<CoinType>(clock, oracle, storage, asset, user, (normal_borrow_amount as u256));
+
+        let _balance = pool::withdraw_balance_v2(pool, amount, user, system_state, ctx);
         emit(BorrowEvent {
             reserve: asset,
             sender: user,
@@ -314,7 +410,7 @@ module lending_core::lending {
         pool: &mut Pool<CoinType>,
         asset: u8,
         repay_balance: Balance<CoinType>,
-        user: address,
+        user: address
     ): Balance<CoinType> {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
@@ -334,7 +430,7 @@ module lending_core::lending {
         });
 
         if (excess_amount > 0) {
-            let _balance = pool::withdraw_balance(pool, excess_amount, user);
+            let _balance = pool::direct_withdraw_balance_v2(pool, excess_amount, user);
             return _balance
         } else {
             let _balance = balance::zero<CoinType>();
@@ -374,6 +470,41 @@ module lending_core::lending {
         (_bonus_balance, _excess_balance)
     }
 
+    public(friend) fun liquidation_v2<DebtCoinType, CollateralCoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        debt_asset: u8,
+        debt_pool: &mut Pool<DebtCoinType>,
+        debt_coin: Coin<DebtCoinType>,
+        collateral_asset: u8,
+        collateral_pool: &mut Pool<CollateralCoinType>,
+        liquidate_user: address,
+        liquidate_amount: u64,
+        system_state: &mut SuiSystemState, 
+        ctx: &mut TxContext
+    ): (Balance<CollateralCoinType>, Balance<DebtCoinType>) {
+        let sender = tx_context::sender(ctx);
+        let debt_balance = utils::split_coin_to_balance(debt_coin, liquidate_amount, ctx);
+
+        let (_excess_balance, _bonus_balance) = base_liquidation_call_v2(
+            clock,
+            oracle,
+            storage,
+            debt_asset,
+            debt_pool,
+            debt_balance,
+            collateral_asset,
+            collateral_pool,
+            sender,
+            liquidate_user,
+            system_state,
+            ctx
+        );
+
+        (_bonus_balance, _excess_balance)
+    }
+
     public(friend) fun liquidation_non_entry<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -404,6 +535,39 @@ module lending_core::lending {
         (_bonus_balance, _excess_balance)
     }
 
+    public(friend) fun liquidation_non_entry_v2<DebtCoinType, CollateralCoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        debt_asset: u8,
+        debt_pool: &mut Pool<DebtCoinType>,
+        debt_balance: Balance<DebtCoinType>,
+        collateral_asset: u8,
+        collateral_pool: &mut Pool<CollateralCoinType>,
+        liquidate_user: address,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): (Balance<CollateralCoinType>, Balance<DebtCoinType>) {
+        let sender = tx_context::sender(ctx);
+
+        let (_excess_balance, _bonus_balance) = base_liquidation_call_v2(
+            clock,
+            oracle,
+            storage,
+            debt_asset,
+            debt_pool,
+            debt_balance,
+            collateral_asset,
+            collateral_pool,
+            sender,
+            liquidate_user,
+            system_state,
+            ctx
+        );
+
+        (_bonus_balance, _excess_balance)
+    }
+
     // Base: Liquidation Function
     fun base_liquidation_call<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
@@ -415,10 +579,11 @@ module lending_core::lending {
         collateral_asset: u8,
         collateral_pool: &mut Pool<CollateralCoinType>,
         executor: address,
-        liquidate_user: address
+        liquidate_user: address,
     ): (Balance<DebtCoinType>, Balance<CollateralCoinType>) {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
+        storage::when_liquidatable(storage, executor, liquidate_user);
 
         let debt_amount = balance::value(&debt_balance);
         pool::deposit_balance(debt_pool, debt_balance, executor);
@@ -449,6 +614,75 @@ module lending_core::lending {
         // The excess balance
         let excess_amount = pool::unnormal_amount(debt_pool, (normal_excess_amount as u64));
         let excess_balance = pool::withdraw_balance(debt_pool, excess_amount, executor);
+
+        let collateral_oracle_id = storage::get_oracle_id(storage, collateral_asset);
+        let debt_oracle_id = storage::get_oracle_id(storage, debt_asset);
+
+        let (_, collateral_price, _) = oracle::get_token_price(clock, oracle, collateral_oracle_id);
+        let (_, debt_price, _) = oracle::get_token_price(clock, oracle, debt_oracle_id);
+
+        emit(LiquidationEvent {
+            sender: executor,
+            user: liquidate_user,
+            collateral_asset: collateral_asset,
+            collateral_price: collateral_price,
+            collateral_amount: obtainable_amount + treasury_amount,
+            treasury: treasury_amount,
+            debt_asset: debt_asset,
+            debt_price: debt_price,
+            debt_amount: debt_amount - excess_amount,
+        });
+
+        return (excess_balance, obtainable_balance)
+    }
+
+    fun base_liquidation_call_v2<DebtCoinType, CollateralCoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        debt_asset: u8,
+        debt_pool: &mut Pool<DebtCoinType>,
+        debt_balance: Balance<DebtCoinType>,
+        collateral_asset: u8,
+        collateral_pool: &mut Pool<CollateralCoinType>,
+        executor: address,
+        liquidate_user: address,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): (Balance<DebtCoinType>, Balance<CollateralCoinType>) {
+        storage::when_not_paused(storage);
+        storage::version_verification(storage);
+        storage::when_liquidatable(storage, executor, liquidate_user);
+
+        let debt_amount = balance::value(&debt_balance);
+        pool::deposit_balance(debt_pool, debt_balance, executor);
+
+        let normal_debt_amount = pool::normal_amount(debt_pool, debt_amount);
+        let (
+            normal_obtainable_amount,
+            normal_excess_amount,
+            normal_treasury_amount
+        ) = logic::execute_liquidate<DebtCoinType, CollateralCoinType>(
+            clock,
+            oracle,
+            storage,
+            liquidate_user,
+            collateral_asset,
+            debt_asset,
+            (normal_debt_amount as u256)
+        );
+
+        // The treasury balance
+        let treasury_amount = pool::unnormal_amount(collateral_pool, (normal_treasury_amount as u64));
+        pool::deposit_treasury(collateral_pool, treasury_amount);
+
+        // The total collateral balance = collateral + bonus
+        let obtainable_amount = pool::unnormal_amount(collateral_pool, (normal_obtainable_amount as u64));
+        let obtainable_balance = pool::withdraw_balance_v2(collateral_pool, obtainable_amount, executor, system_state, ctx);
+
+        // The excess balance
+        let excess_amount = pool::unnormal_amount(debt_pool, (normal_excess_amount as u64));
+        let excess_balance = pool::withdraw_balance_v2(debt_pool, excess_amount, executor, system_state, ctx);
 
         let collateral_oracle_id = storage::get_oracle_id(storage, collateral_asset);
         let debt_oracle_id = storage::get_oracle_id(storage, debt_asset);
@@ -503,6 +737,20 @@ module lending_core::lending {
         base_withdraw(clock, oracle, storage, pool, asset, amount, account::account_owner(account_cap))
     }
 
+    public(friend) fun withdraw_with_account_cap_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        account_cap: &AccountCap,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        base_withdraw_v2(clock, oracle, storage, pool, asset, amount, account::account_owner(account_cap), system_state, ctx)
+    }
+
     public(friend) fun borrow_with_account_cap<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
@@ -513,6 +761,20 @@ module lending_core::lending {
         account_cap: &AccountCap
     ): Balance<CoinType> {
         base_borrow(clock, oracle, storage, pool, asset, amount, account::account_owner(account_cap))
+    }
+
+    public(friend) fun borrow_with_account_cap_v2<CoinType>(
+        clock: &Clock,
+        oracle: &PriceOracle,
+        storage: &mut Storage,
+        pool: &mut Pool<CoinType>,
+        asset: u8,
+        amount: u64,
+        account_cap: &AccountCap,
+        system_state: &mut SuiSystemState,
+        ctx: &mut TxContext
+    ): Balance<CoinType> {
+        base_borrow_v2(clock, oracle, storage, pool, asset, amount, account::account_owner(account_cap), system_state, ctx)
     }
 
     public(friend) fun repay_with_account_cap<CoinType>(
@@ -532,6 +794,10 @@ module lending_core::lending {
         flash_loan::loan<CoinType>(config, pool, user, amount)
     }
 
+    fun base_flash_loan_v2<CoinType>(config: &FlashLoanConfig, pool: &mut Pool<CoinType>, user: address, amount: u64, system_state: &mut SuiSystemState, ctx: &mut TxContext): (Balance<CoinType>, FlashLoanReceipt<CoinType>) {
+        flash_loan::loan_v2<CoinType>(config, pool, user, amount, system_state, ctx)
+    }
+
     fun base_flash_repay<CoinType>(clock: &Clock, storage: &mut Storage, pool: &mut Pool<CoinType>, receipt: FlashLoanReceipt<CoinType>, user: address, repay_balance: Balance<CoinType>): Balance<CoinType> {
         flash_loan::repay<CoinType>(clock, storage, pool, receipt, user, repay_balance)
     }
@@ -540,8 +806,18 @@ module lending_core::lending {
         base_flash_loan<CoinType>(config, pool, tx_context::sender(ctx), amount)
     }
 
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public fun flash_loan_with_ctx_v2<CoinType>(config: &FlashLoanConfig, pool: &mut Pool<CoinType>, amount: u64, system_state: &mut SuiSystemState, ctx: &mut TxContext): (Balance<CoinType>, FlashLoanReceipt<CoinType>) {
+        base_flash_loan_v2<CoinType>(config, pool, tx_context::sender(ctx), amount, system_state, ctx)
+    }
+
     public fun flash_loan_with_account_cap<CoinType>(config: &FlashLoanConfig, pool: &mut Pool<CoinType>, amount: u64, account_cap: &AccountCap): (Balance<CoinType>, FlashLoanReceipt<CoinType>) {
         base_flash_loan<CoinType>(config, pool, account::account_owner(account_cap), amount)
+    }
+
+    // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
+    public fun flash_loan_with_account_cap_v2<CoinType>(config: &FlashLoanConfig, pool: &mut Pool<CoinType>, amount: u64, account_cap: &AccountCap, system_state: &mut SuiSystemState, ctx: &mut TxContext): (Balance<CoinType>, FlashLoanReceipt<CoinType>) {
+        base_flash_loan_v2<CoinType>(config, pool, account::account_owner(account_cap), amount, system_state, ctx)
     }
 
     public fun flash_repay_with_ctx<CoinType>(clock: &Clock, storage: &mut Storage, pool: &mut Pool<CoinType>, receipt: FlashLoanReceipt<CoinType>, repay_balance: Balance<CoinType>, ctx: &mut TxContext): Balance<CoinType> {
