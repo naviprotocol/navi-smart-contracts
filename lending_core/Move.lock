@@ -2,13 +2,14 @@
 
 [move]
 version = 3
-manifest_digest = "4B983F48E455F43329976E524ABADFB9E14316CD20C0C98B5853F0E02CADB092"
-deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
-
+manifest_digest = "21730AE365F6778DB0FD626C612357C389A8DE9906D36DB29761221B73BB695D"
+deps_digest = "397E6A9F7A624706DBDFEE056CE88391A15876868FD18A88504DA74EB458D697"
 dependencies = [
-  { id = "Pyth", name = "Pyth" },
   { id = "Sui", name = "Sui" },
-  { id = "SupraOracle", name = "SupraOracle" },
+  { id = "liquid_staking", name = "liquid_staking" },
+  { id = "math", name = "math" },
+  { id = "oracle", name = "oracle" },
+  { id = "utils", name = "utils" },
 ]
 
 [[move.package]]
@@ -33,6 +34,15 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "SuiSystem"
+source = { git = "https://github.com/MystenLabs/sui.git", rev = "mainnet", subdir = "crates/sui-framework/packages/sui-system" }
+
+dependencies = [
+  { id = "MoveStdlib", name = "MoveStdlib" },
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
 id = "SupraOracle"
 source = { git = "https://github.com/naviprotocol/supra-oracle.git", rev = "main", subdir = "supra_holder" }
 
@@ -50,6 +60,33 @@ dependencies = [
 ]
 
 [[move.package]]
+id = "liquid_staking"
+source = { git = "https://github.com/naviprotocol/navi-smart-contracts.git", rev = "main", subdir = "volo_liquid_staking" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+  { id = "SuiSystem", name = "SuiSystem" },
+]
+
+[[move.package]]
+id = "math"
+source = { git = "https://github.com/naviprotocol/navi-smart-contracts.git", rev = "main", subdir = "math" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
+]
+
+[[move.package]]
+id = "oracle"
+source = { git = "https://github.com/naviprotocol/navi-smart-contracts.git", rev = "main", subdir = "oracle" }
+
+dependencies = [
+  { id = "Pyth", name = "Pyth" },
+  { id = "Sui", name = "Sui" },
+  { id = "SupraOracle", name = "SupraOracle" },
+]
+
+[[move.package]]
 id = "supra_utils"
 source = { git = "https://github.com/naviprotocol/supra-oracle.git", rev = "main", subdir = "supra_utils" }
 
@@ -64,6 +101,14 @@ source = { git = "https://github.com/naviprotocol/supra-oracle.git", rev = "main
 dependencies = [
   { id = "Sui", name = "Sui" },
   { id = "supra_utils", name = "supra_utils" },
+]
+
+[[move.package]]
+id = "utils"
+source = { git = "https://github.com/naviprotocol/navi-smart-contracts.git", rev = "main", subdir = "utils" }
+
+dependencies = [
+  { id = "Sui", name = "Sui" },
 ]
 
 [move.toolchain-version]
