@@ -1,4 +1,10 @@
-# protocol-core (Commit Locked)
+# protocol-core 
+
+# Import Dependency
+
+```bash
+mvr add @navi-protocol/lending --network mainnet
+```
 
 # Build the package
 
