@@ -27,4 +27,4 @@ https://hackenproof.com/companies/navi-protocol
 
 | Package | Version | Document |
 |---|---|---|
-| lending_core | 23(latest) | [Preview](https://app.gitbook.com/o/dcxQ7e5pivSbceCjCqQ8/s/WcKfs3vWiDuhitgCkBQQ/smart-contract-overview/release-history/navi-lending-protocol-upgrade-announcement-2025-11-17) |
+| lending_core | 23(latest) | [Preview](https://naviprotocol.gitbook.io/navi-protocol-developer-docs/smart-contract-overview/release-history/navi-lending-protocol-upgrade-announcement-2025-11-17) |
