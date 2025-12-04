@@ -23,7 +23,7 @@ sui client upgrade --gas-budget 100000000 --upgrade-capability ${upgradeCap}
 # Bug Bounty Program
 https://hackenproof.com/companies/navi-protocol
 
-## Upgrade Status
+# Upgrade Status
 
 | Package | Version | Document |
 |---|---|---|
