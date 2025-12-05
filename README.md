@@ -25,6 +25,6 @@ https://hackenproof.com/companies/navi-protocol
 
 # Upgrade Status
 
-| Package | Version | Document |
-|---|---|---|
-| lending_core | 23(latest) | [Preview](https://naviprotocol.gitbook.io/navi-protocol-developer-docs/smart-contract-overview/release-history/navi-lending-protocol-upgrade-announcement-2025-11-17) |
+| Package | Version | Document | Audit | 
+|---|---|---|---|
+| lending_core | 23(latest) | [Preview](https://naviprotocol.gitbook.io/navi-protocol-developer-docs/smart-contract-overview/release-history/navi-lending-protocol-upgrade-announcement-2025-11-17) | ✅ [OtterSec](https://github.com/naviprotocol/navi-smart-contracts/blob/main/audits/NAVI_Pool_Increment_Audit_OtterSec_2025.pdf) |
