@@ -9,24 +9,16 @@ subdir = "crates/sui-framework/packages/sui-framework"
 rev = "mainnet"
 
 [dependencies.math]
-git = "https://github.com/naviprotocol/navi-smart-contracts.git"
-subdir = "math"
-rev = "main"
+path = "../math"
 
 [dependencies.oracle]
-git = "https://github.com/naviprotocol/navi-smart-contracts.git"
-subdir = "oracle"
-rev = "main"
+path = "../oracle"
 
 [dependencies.utils]
-git = "https://github.com/naviprotocol/navi-smart-contracts.git"
-subdir = "utils"
-rev = "main"
+path = "../utils"
 
 [dependencies.liquid_staking]
-git = "https://github.com/naviprotocol/navi-smart-contracts.git"
-subdir = "volo_liquid_staking"
-rev = "main"
+path = "../volo_liquid_staking"
 
 [addresses]
 sui = "0x2"

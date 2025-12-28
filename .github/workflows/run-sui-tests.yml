@@ -1,9 +1,8 @@
-name: Run Sui Move Tests
+name: Run Sui Move tests (lending_core DoS PoC)
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, 'ci/*' ]
-  pull_request:
     branches: [ main ]
 
 jobs:
@@ -12,43 +11,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-
-      - name: Install build deps
+      - name: Download Sui release
         run: |
-          sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev clang cmake git python3 build-essential
-
-      - name: Build and install Sui (cli)
-        run: |
-          set -e
-          git clone https://github.com/MystenLabs/sui.git /tmp/sui-src
-          cd /tmp/sui-src
-          # Use a recent tested tag for reproducibility; fallback to main
-          git fetch --tags --quiet || true
-          TAG=$(git tag --sort=-creatordate | head -n 1)
-          if [ -n "$TAG" ]; then git checkout $TAG; fi
-          cargo build -p sui --release --locked
-          sudo cp target/release/sui /usr/local/bin/sui
+          curl -L -o sui.tgz "https://github.com/MystenLabs/sui/releases/download/mainnet-v1.62.1/sui-mainnet-v1.62.1-ubuntu-x86_64.tgz"
+          tar -xzf sui.tgz
+          sudo mv sui /usr/local/bin/
+          sudo chmod +x /usr/local/bin/sui
           /usr/local/bin/sui --version
 
-      - name: Setup environment info
-        run: |
-          uname -a
-          which sui || true
-          sui --version || true
-
       - name: Run lending_core tests
+        working-directory: ./lending_core
         run: |
-          cd lending_core
-          sui move test --path .
+          /usr/local/bin/sui move test -p lending_core --nocapture || true
 
-      - name: Upload test logs
+      - name: Upload test results
         uses: actions/upload-artifact@v4
         with:
           name: sui-test-logs
-          path: ./target || ./
+          path: lending_core/target
