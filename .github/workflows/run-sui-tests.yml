@@ -1,0 +1,31 @@
+name: Run Sui Move tests (lending_core DoS PoC)
+
+on:
+  workflow_dispatch:
+  push: {}
+  pull_request: {}
+
+jobs:
+  sui-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Sui release
+        run: |
+          curl -L -o sui.tgz "https://github.com/MystenLabs/sui/releases/download/mainnet-v1.62.1/sui-mainnet-v1.62.1-ubuntu-x86_64.tgz"
+          tar -xzf sui.tgz
+          sudo mv sui /usr/local/bin/
+          sudo chmod +x /usr/local/bin/sui
+          /usr/local/bin/sui --version
+
+      - name: Run lending_core tests
+        working-directory: ./lending_core
+        run: |
+          /usr/local/bin/sui move test -p lending_core --nocapture || true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: sui-test-logs
+          path: lending_core/target
