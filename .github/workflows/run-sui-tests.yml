@@ -2,8 +2,8 @@ name: Run Sui Move tests (lending_core DoS PoC)
 
 on:
   workflow_dispatch:
-  push:
-    branches: [ main ]
+  push: {}
+  pull_request: {}
 
 jobs:
   sui-tests:
