@@ -1,0 +1,54 @@
+name: Run Sui Move Tests
+
+on:
+  push:
+    branches: [ main, 'ci/*' ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  sui-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev clang cmake git python3 build-essential
+
+      - name: Build and install Sui (cli)
+        run: |
+          set -e
+          git clone https://github.com/MystenLabs/sui.git /tmp/sui-src
+          cd /tmp/sui-src
+          # Use a recent tested tag for reproducibility; fallback to main
+          git fetch --tags --quiet || true
+          TAG=$(git tag --sort=-creatordate | head -n 1)
+          if [ -n "$TAG" ]; then git checkout $TAG; fi
+          cargo build -p sui --release --locked
+          sudo cp target/release/sui /usr/local/bin/sui
+          /usr/local/bin/sui --version
+
+      - name: Setup environment info
+        run: |
+          uname -a
+          which sui || true
+          sui --version || true
+
+      - name: Run lending_core tests
+        run: |
+          cd lending_core
+          sui move test --path .
+
+      - name: Upload test logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sui-test-logs
+          path: ./target || ./
