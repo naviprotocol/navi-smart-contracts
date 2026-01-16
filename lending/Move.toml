@@ -1,0 +1,11 @@
+[package]
+name = "lending"
+version = "1.3.0"
+
+[environments]
+development = "35834a8a"
+deps = "35834a8a"
+
+[dependencies]
+oracle = { local = "../oracle" }
+liquid_staking = { local = "../volo_liquid_staking" }
