@@ -3,7 +3,7 @@ module lending_core::dynamic_calculator {
     use sui::address;
     use sui::clock::{Self, Clock};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use oracle::oracle::{PriceOracle};
     use lending_core::calculator;
     use lending_core::pool::{Self, Pool};

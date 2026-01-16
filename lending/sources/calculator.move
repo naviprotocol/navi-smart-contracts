@@ -1,7 +1,7 @@
 module lending_core::calculator {
     use sui::clock::{Clock};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use lending_core::error::{Self};
     use lending_core::constants::{Self};
     use oracle::oracle::{Self, PriceOracle};

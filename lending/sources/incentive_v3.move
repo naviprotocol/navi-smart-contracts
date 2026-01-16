@@ -18,7 +18,7 @@ module lending_core::incentive_v3 {
     use sui::tx_context::{Self, TxContext};
     use sui::dynamic_field::{Self};
 
-    use math::ray_math::{Self};
+    use lending_core::ray_math::{Self};
     use lending_core::error::{Self};
     use lending_core::pool::{Pool};
     use lending_core::version::{Self};

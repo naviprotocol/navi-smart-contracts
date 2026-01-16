@@ -7,8 +7,8 @@ module lending_core::incentive_v2_test {
     use sui::clock::{Self, Clock};
     use sui::test_scenario::{Self, Scenario};
 
-    use math::ray_math;
-    use math::safe_math;
+    use lending_core::ray_math;
+    use lending_core::safe_math;
     use oracle::oracle::{PriceOracle};
     use lending_core::base::{Self};
     use lending_core::pool::{Self, Pool};

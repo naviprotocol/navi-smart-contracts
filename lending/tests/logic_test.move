@@ -5,7 +5,7 @@ module lending_core::logic_test {
     use sui::clock;
     use sui::test_scenario::{Self};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use oracle::oracle::{PriceOracle};
     use lending_core::global;
     use lending_core::logic::{Self};

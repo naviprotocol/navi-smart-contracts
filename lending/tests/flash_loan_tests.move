@@ -19,7 +19,7 @@ module lending_core::flash_loan_test {
     use lending_core::manage::{Self};
     use lending_core::flash_loan::{Self, Config as FlashLoanConfig};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use lending_core::calculator;
     use lending_core::logic::{Self};
 

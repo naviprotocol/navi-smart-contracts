@@ -1,6 +1,6 @@
 // title: WadRayMath module
 // Provides mul and div function for wads (decimal numbers with 18 digits precision) and rays (decimals with 27 digits)
-module math::ray_math {
+module lending_core::ray_math {
     use sui::address; // max(u256) => address::max()
 
     const WAD: u256 = 1000000000000000000;
@@ -15,7 +15,7 @@ module math::ray_math {
     const RAY_MATH_MULTIPLICATION_OVERFLOW: u64 = 1101;
     const RAY_MATH_ADDITION_OVERFLOW: u64 = 1102;
     const RAY_MATH_DIVISION_BY_ZERO: u64 = 1103;
-    
+
 
     // return: ray, 1e27 -> 1000000000000000000000000000
     public fun ray(): u256 {

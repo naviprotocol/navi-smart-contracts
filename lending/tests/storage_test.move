@@ -7,7 +7,7 @@ module lending_core::storage_test {
     use sui::coin::{CoinMetadata};
     use sui::test_scenario::{Self};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use lending_core::global;
     use lending_core::pool::{PoolAdminCap};
     use lending_core::btc_test::{BTC_TEST};

@@ -8,7 +8,7 @@ module lending_core::incentive_v3_upgrade_test {
     use std::vector::{Self};
     use sui::transfer;
     use sui::balance::{Self, Balance};
-    use math::ray_math::{Self};
+    use lending_core::ray_math::{Self};
     use sui::vec_map::{Self, VecMap};
 
     use oracle::oracle::{Self, OracleAdminCap, PriceOracle};

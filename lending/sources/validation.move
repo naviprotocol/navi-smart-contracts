@@ -1,6 +1,6 @@
 module lending_core::validation {
     use std::type_name;
-    use math::ray_math::{Self};
+    use lending_core::ray_math::{Self};
     use lending_core::storage::{Self, Storage};
     use lending_core::error::{Self};
 

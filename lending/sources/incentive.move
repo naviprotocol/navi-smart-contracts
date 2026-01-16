@@ -13,9 +13,9 @@ module lending_core::incentive {
     use sui::balance::{Self, Balance};
     use sui::tx_context::{Self, TxContext};
 
-    use utils::utils;
-    use math::ray_math;
-    use math::safe_math;
+    use lending_core::utils;
+    use lending_core::ray_math;
+    use lending_core::safe_math;
     use lending_core::storage::{Self, Storage};
     use lending_core::error::{Self};
     use lending_core::account::{Self, AccountCap};
