@@ -1,5 +1,5 @@
 [package]
-name = "lending"
+name = "lending_core"
 version = "1.3.0"
 
 [environments]
@@ -9,3 +9,4 @@ deps = "35834a8a"
 [dependencies]
 oracle = { local = "../oracle" }
 liquid_staking = { local = "../volo_liquid_staking" }
+sui_system = { system = "sui_system" }
