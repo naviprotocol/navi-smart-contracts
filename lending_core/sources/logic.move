@@ -3,8 +3,8 @@ module lending_core::logic {
     use sui::address;
     use sui::clock::{Self, Clock};
 
-    use math::ray_math;
-    use math::safe_math;
+    use lending_core::ray_math;
+    use lending_core::safe_math;
     use oracle::oracle::{PriceOracle};
     use lending_core::validation;
     use lending_core::calculator::{Self};

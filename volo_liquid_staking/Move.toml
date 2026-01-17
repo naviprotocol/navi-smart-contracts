@@ -1,14 +1,7 @@
 [package]
 name = "liquid_staking"
 version = "0.0.1"
-published-at = "0x634511c660964940915acb37dde75963e35f2d1b0a034b41e2da8f3e9d1491ae"
 edition = "2024"
 
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "mainnet" }
-SuiSystem = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-system", rev = "mainnet" }
-
-[addresses]
-liquid_staking = "0x634511c660964940915acb37dde75963e35f2d1b0a034b41e2da8f3e9d1491ae"
-sui = "0x2"
-sui_system = "0x3"
+sui_system = { system = "sui_system" }

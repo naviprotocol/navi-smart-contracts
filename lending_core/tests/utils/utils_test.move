@@ -1,7 +1,7 @@
 #[test_only]
 module utils::utils_test {
     use std::option;
-    use utils::utils;
+    use lending_core::utils;
     use sui::transfer;
     use sui::test_scenario;
     use sui::balance::{Self};

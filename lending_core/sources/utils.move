@@ -1,9 +1,9 @@
-module utils::utils {
+module lending_core::utils {
     use sui::transfer;
     use sui::coin::{Self, Coin};
     use sui::balance::{Balance};
     use sui::tx_context::{Self, TxContext};
-    
+
     const UTILS_AMOUNT_ZERO: u64 = 46000;
     const UTILS_INSUFFICIENT_FUNDS: u64 = 46001;
 

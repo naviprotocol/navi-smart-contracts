@@ -14,7 +14,7 @@ module lending_core::storage {
     use sui::dynamic_field::{Self};
     use sui_system::sui_system::{SuiSystemState};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use lending_core::pool::{Self, Pool, PoolAdminCap};
     use lending_core::version::{Self};
     use lending_core::error::{Self};
@@ -684,7 +684,7 @@ module lending_core::storage {
 
         let scaled_treasury_value = reserve.treasury_balance;
         let treasury_value = ray_math::ray_mul(scaled_treasury_value, supply_index);
-        let withdrawable_value = math::safe_math::min((withdraw_amount as u256), treasury_value); // get the smallest one value, which is the amount that can be withdrawn
+        let withdrawable_value = lending_core::safe_math::min((withdraw_amount as u256), treasury_value); // get the smallest one value, which is the amount that can be withdrawn
 
         {
             // decrease treasury balance

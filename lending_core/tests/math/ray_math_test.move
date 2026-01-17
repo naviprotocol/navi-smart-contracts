@@ -1,6 +1,6 @@
 #[test_only]
 module math::ray_math_test {
-    use math::ray_math;
+    use lending_core::ray_math;
 
     #[test]
     public fun ray_test() {

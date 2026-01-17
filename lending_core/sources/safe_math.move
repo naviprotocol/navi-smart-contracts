@@ -1,5 +1,5 @@
 // Wrapper for arithmetic operations
-module math::safe_math {
+module lending_core::safe_math {
     // Error Code
     const SAFE_MATH_ADDITION_OVERFLOW: u64 = 1001;
     const SAFE_MATH_SUBTRACTION_OVERFLOW: u64 = 1002;

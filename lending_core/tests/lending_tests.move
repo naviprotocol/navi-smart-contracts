@@ -5,7 +5,7 @@ module lending_core::lending_tests {
     use sui::coin::{Self};
     use sui::test_scenario::{Self};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use oracle::oracle::{Self, PriceOracle, OracleFeederCap};
     use lending_core::base;
     use lending_core::logic::{Self};

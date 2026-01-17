@@ -7,7 +7,7 @@ module lending_core::incentive_tests {
     use sui::transfer::{Self};
     use sui::test_scenario::{Self};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use lending_core::global;
     use lending_core::storage::{Storage};
     use lending_core::lending::{Self};
