@@ -19,6 +19,7 @@ module lending_core::pool_manager {
     use sui::sui::{SUI};
 
     friend lending_core::pool;
+    use lending_core::event;
 
     // The treasury pool, which is used to hold all the funds
     struct SuiPoolManager has key, store {
@@ -36,6 +37,7 @@ module lending_core::pool_manager {
         vsui_metadata: Metadata<CERT>,
     }
 
+    // Event
     struct FundUpdated has copy, drop {
         original_sui_amount: u64,
         current_sui_amount: u64,
@@ -140,13 +142,13 @@ module lending_core::pool_manager {
                 balance::join(pool_vsui_balance, vsui_balance);
         };
 
-        emit(FundUpdated {
-            original_sui_amount: manager.original_sui_amount,
-            current_sui_amount: balance::value(pool_balance),
-            vsui_balance_amount: balance::value(pool_vsui_balance),
-            // treasury_amount: treasury_amount,
-            target_sui_amount: manager.target_sui_amount
-        });
+        event::emit_fund_updated(
+            manager.original_sui_amount,
+            balance::value(pool_balance),
+            balance::value(pool_vsui_balance),
+            manager.target_sui_amount,
+            object::uid_to_address(&manager.id)
+        );
     }
 
     public(friend) fun prepare_before_withdraw<CoinType>(manager: &mut SuiPoolManager, withdraw_amount: u64, pool_sui_amount: u64, system_state: &mut SuiSystemState, ctx: &mut TxContext): Balance<CoinType> {
@@ -184,12 +186,13 @@ module lending_core::pool_manager {
         let principal_in_raw: &mut Balance<CoinType> = bag::borrow_mut(&mut manager.temp_sui_balance, SuiKey {});
         let principal_in_raw_balance = balance::split(principal_in_raw, convert_amount);
 
-        emit(FundUpdated {
-            original_sui_amount: manager.original_sui_amount,
-            current_sui_amount: pool_sui_amount,
-            vsui_balance_amount: balance::value(&manager.vsui_balance),
-            target_sui_amount: manager.target_sui_amount,
-        });
+        event::emit_fund_updated(
+            manager.original_sui_amount,
+            pool_sui_amount,
+            balance::value(&manager.vsui_balance),
+            manager.target_sui_amount,
+            object::uid_to_address(&manager.id)
+        );
 
         principal_in_raw_balance
     }
@@ -223,10 +226,11 @@ module lending_core::pool_manager {
         assert!(balance::value(&manager.vsui_balance) == 0 
         || balance::value(&manager.vsui_balance) > MIN_OPERATION_AMOUNT, error::insufficient_balance());
 
-        emit(StakingTreasuryWithdrawn {
-            taken_vsui_balance_amount: balance::value(&vsui_balance),
-            equal_sui_balance_amount: treasury_sui_amount
-        });
+        event::emit_staking_treasury_withdrawn(
+            balance::value(&vsui_balance),
+            treasury_sui_amount,
+            object::uid_to_address(&manager.id)
+        );
 
         vsui_balance
     }

@@ -4,7 +4,7 @@ module lending_ui::incentive_v3_getter {
     use sui::clock::{Self, Clock};
 
     use sui::vec_map::{Self};
-    use math::ray_math::{Self};
+    use lending_core::ray_math::{Self};
     use std::type_name::{Self};
     use lending_core::constants::{Self};
     use lending_core::storage::{Storage};

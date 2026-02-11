@@ -10,6 +10,7 @@ module oracle::oracle_pro {
     use oracle::oracle_constants::{Self as constants};
     use SupraOracle::SupraSValueFeed::{OracleHolder};
     use pyth::price_info::{PriceInfoObject};
+    use switchboard::aggregator::{Aggregator};
 
     #[test_only]
     use std::vector::{Self};
@@ -51,7 +52,7 @@ module oracle::oracle_pro {
         updated_time: u64,
     }
 
-    public fun update_single_price(clock: &Clock, oracle_config: &mut OracleConfig, price_oracle: &mut PriceOracle, supra_oracle_holder: &OracleHolder, pyth_price_info: &PriceInfoObject, feed_address: address) {
+    public fun update_single_price_v2(clock: &Clock, oracle_config: &mut OracleConfig, price_oracle: &mut PriceOracle, supra_oracle_holder: &OracleHolder, pyth_price_info: &PriceInfoObject, switchboard_aggregator: &Aggregator, feed_address: address) {
         config::version_verification(oracle_config);
         assert!(!config::is_paused(oracle_config), error::paused());
 
@@ -80,7 +81,7 @@ module oracle::oracle_pro {
             // the administrator should shut it down before reaching here. No event or error is required at this time, it was confirmed by the administrator
             return
         };
-        let (primary_price, primary_updated_time) = get_price_from_adaptor(primary_oracle_provider_config, decimal, supra_oracle_holder, pyth_price_info);
+        let (primary_price, primary_updated_time) = get_price_from_adaptor_v2(primary_oracle_provider_config, decimal, supra_oracle_holder, pyth_price_info, switchboard_aggregator);
         let is_primary_price_fresh = strategy::is_oracle_price_fresh(current_timestamp, primary_updated_time, max_timestamp_diff);
 
         // retrieve secondary price and status
@@ -90,7 +91,7 @@ module oracle::oracle_pro {
         let secondary_updated_time = 0;
         if (is_secondary_oracle_available) {
             let secondary_source_config = config::get_secondary_source_config(price_feed);
-            (secondary_price, secondary_updated_time) = get_price_from_adaptor(secondary_source_config, decimal, supra_oracle_holder, pyth_price_info);
+            (secondary_price, secondary_updated_time) = get_price_from_adaptor_v2(secondary_source_config, decimal, supra_oracle_holder, pyth_price_info, switchboard_aggregator);
             is_secondary_price_fresh = strategy::is_oracle_price_fresh(current_timestamp, secondary_updated_time, max_timestamp_diff);
         };
 
@@ -164,7 +165,18 @@ module oracle::oracle_pro {
         oracle::update_price(clock, price_oracle, oracle_id, final_price); 
     }
 
+
+    #[allow(unused_variable)]
+    public fun update_single_price(clock: &Clock, oracle_config: &mut OracleConfig, price_oracle: &mut PriceOracle, supra_oracle_holder: &OracleHolder, pyth_price_info: &PriceInfoObject, feed_address: address) {
+        abort 0
+    }
+
+    #[allow(unused_variable)]
     public fun get_price_from_adaptor(oracle_provider_config: &OracleProviderConfig, target_decimal: u8, supra_oracle_holder: &OracleHolder, pyth_price_info: &PriceInfoObject): (u256, u64) {
+        abort 0
+    }
+
+    public fun get_price_from_adaptor_v2(oracle_provider_config: &OracleProviderConfig, target_decimal: u8, supra_oracle_holder: &OracleHolder, pyth_price_info: &PriceInfoObject, switchboard_aggregator: &Aggregator): (u256, u64) {
         let (provider, pair_id) = (provider::get_provider_from_oracle_provider_config(oracle_provider_config), config::get_pair_id_from_oracle_provider_config(oracle_provider_config));
         if (provider == provider::supra_provider()) {
             let supra_pair_id = oracle::adaptor_supra::vector_to_pair_id(pair_id);
@@ -176,6 +188,13 @@ module oracle::oracle_pro {
             let pyth_pair_id = oracle::adaptor_pyth::get_identifier_to_vector(pyth_price_info);
             assert!(sui::address::from_bytes(pyth_pair_id) == sui::address::from_bytes(pair_id), error::pair_not_match());
             let (price, timestamp) = oracle::adaptor_pyth::get_price_unsafe_to_target_decimal(pyth_price_info, target_decimal);
+            return (price, timestamp)
+        };
+
+        if (provider == provider::switchboard_provider()) {
+            let switchboard_pair_id = oracle::adaptor_switchboard::get_identifier_to_vector(switchboard_aggregator);
+            assert!(sui::address::from_bytes(switchboard_pair_id) == sui::address::from_bytes(pair_id), error::pair_not_match());
+            let (price, timestamp) = oracle::adaptor_switchboard::get_price_to_target_decimal(switchboard_aggregator, target_decimal);
             return (price, timestamp)
         };
 

@@ -14,6 +14,7 @@ module lending_core::pool {
 
     use lending_core::error::{Self};
     use lending_core::pool_manager::{Self, SuiPoolManager};
+    use lending_core::event;
 
     use sui_system::sui_system::{SuiSystemState};
     use sui::sui::{SUI};
@@ -74,6 +75,7 @@ module lending_core::pool {
 
     // === dynamic field keys ===
     struct PoolManagerKey has copy, drop, store {}
+    struct MarketIdKey has copy, drop, store {}
 
     // Entry
     fun init(ctx: &mut TxContext) {
@@ -83,16 +85,32 @@ module lending_core::pool {
         }, tx_context::sender(ctx))
     }
 
+    // DEPRECATED: use create_pool_with_market_id instead
+    #[allow(unused)]
     public(friend) fun create_pool<CoinType>(_: &PoolAdminCap, decimal: u8, ctx: &mut TxContext) {
+        abort error::invalid_function_call()
+    }
+
+    // only current main market needs to be initialized
+    // other markets will be initialized when creating reserves
+    public fun init_pool_for_main_market<CoinType>(_: &PoolAdminCap, pool: &mut Pool<CoinType>) {
+        dynamic_field::add(&mut pool.id, MarketIdKey {}, 0u64);
+    }
+
+    public(friend) fun create_pool_with_market_id<CoinType>(_: &PoolAdminCap, decimal: u8, market_id: u64, ctx: &mut TxContext) {
+        let pool_id = object::new(ctx);
+        let pool_address = object::uid_to_address(&pool_id);
+        let coin_type = type_name::into_string(type_name::get<CoinType>());
         let pool = Pool<CoinType> {
-            id: object::new(ctx),
+            id: pool_id,
             balance: balance::zero<CoinType>(),
             treasury_balance: balance::zero<CoinType>(),
             decimal: decimal,
         };
+        dynamic_field::add(&mut pool.id, MarketIdKey {}, market_id);
         transfer::share_object(pool);
 
-        emit(PoolCreate {creator: tx_context::sender(ctx)})
+        event::emit_pool_create(tx_context::sender(ctx), coin_type, pool_address, market_id)
     }
 
     // It's used for direct deposit without updating pool manager
@@ -101,11 +119,13 @@ module lending_core::pool {
         let mint_balance = coin::into_balance(mint_coin);
         balance::join(&mut pool.balance, mint_balance);
 
-        emit(PoolDeposit {
-            sender: tx_context::sender(ctx),
-            amount: mint_value,
-            pool: type_name::into_string(type_name::get<CoinType>())
-        })
+        let market_id = get_market_id(pool);
+        event::emit_pool_deposit(
+            tx_context::sender(ctx),
+            mint_value,
+            type_name::into_string(type_name::get<CoinType>()),
+            market_id
+        )
     }
 
     public(friend) fun deposit_balance<CoinType>(pool: &mut Pool<CoinType>, deposit_balance: Balance<CoinType>, user: address) {
@@ -117,11 +137,13 @@ module lending_core::pool {
             pool_manager::update_deposit(manage, balance_value);
         };
 
-        emit(PoolDeposit {
-            sender: user,
-            amount: balance_value,
-            pool: type_name::into_string(type_name::get<CoinType>())
-        })
+        let market_id = get_market_id(pool);
+        event::emit_pool_deposit(
+            user,
+            balance_value,
+            type_name::into_string(type_name::get<CoinType>()),
+            market_id
+        )
     }
 
     // unused
@@ -129,12 +151,14 @@ module lending_core::pool {
     public(friend) fun withdraw<CoinType>(pool: &mut Pool<CoinType>, amount: u64, recipient: address, ctx: &mut TxContext) {
         let withdraw_balance = balance::split(&mut pool.balance, amount);
         let withdraw_coin = coin::from_balance(withdraw_balance, ctx);
-        emit(PoolWithdraw {
-            sender: tx_context::sender(ctx),
-            recipient: recipient,
-            amount: amount,
-            pool: type_name::into_string(type_name::get<CoinType>()),
-        });
+        let market_id = get_market_id(pool);
+        event::emit_pool_withdraw(
+            tx_context::sender(ctx),
+            recipient,
+            amount,
+            type_name::into_string(type_name::get<CoinType>()),
+            market_id
+        );
 
         transfer::public_transfer(withdraw_coin, recipient)
     }
@@ -150,12 +174,14 @@ module lending_core::pool {
         };
 
         let _balance = balance::split(&mut pool.balance, amount);
-        emit(PoolWithdraw {
-            sender: user,
-            recipient: user,
-            amount: amount,
-            pool: type_name::into_string(type_name::get<CoinType>()),
-        });
+        let market_id = get_market_id(pool);
+        event::emit_pool_withdraw(
+            user,
+            user,
+            amount,
+            type_name::into_string(type_name::get<CoinType>()),
+            market_id
+        );
 
         return _balance
     }
@@ -174,12 +200,14 @@ module lending_core::pool {
         };
 
         let _balance = balance::split(&mut pool.balance, amount);
-        emit(PoolWithdraw {
-            sender: user,
-            recipient: user,
-            amount: amount,
-            pool: type_name::into_string(type_name::get<CoinType>()),
-        });
+        let market_id = get_market_id(pool);
+        event::emit_pool_withdraw(
+            user,
+            user,
+            amount,
+            type_name::into_string(type_name::get<CoinType>()),
+            market_id
+        );
 
         return _balance
     }
@@ -203,12 +231,14 @@ module lending_core::pool {
             _withdraw_balance
         };
         
-        emit(PoolWithdraw {
-            sender: user,
-            recipient: user,
-            amount: amount,
-            pool: type_name::into_string(type_name::get<CoinType>()),
-        });
+        let market_id = get_market_id(pool);
+        event::emit_pool_withdraw(
+            user,
+            user,
+            amount,
+            type_name::into_string(type_name::get<CoinType>()),
+            market_id
+        );
 
         return _balance
     }
@@ -267,15 +297,17 @@ module lending_core::pool {
         let withdraw_coin = coin::from_balance(withdraw_balance, ctx);
 
         let total_supply_after_withdraw = balance::value(&pool.balance);
-        emit(PoolWithdrawReserve {
-            sender: tx_context::sender(ctx),
-            recipient: recipient,
-            amount: amount,
-            before: total_supply,
-            after: total_supply_after_withdraw,
-            pool: type_name::into_string(type_name::get<CoinType>()),
-            poolId: object::uid_to_address(&pool.id),
-        });
+        let market_id = get_market_id(pool);
+        event::emit_pool_withdraw_reserve(
+            tx_context::sender(ctx),
+            recipient,
+            amount,
+            total_supply,
+            total_supply_after_withdraw,
+            type_name::into_string(type_name::get<CoinType>()),
+            object::uid_to_address(&pool.id),
+            market_id
+        );
 
         transfer::public_transfer(withdraw_coin, recipient)
     }
@@ -371,6 +403,10 @@ module lending_core::pool {
         pool_manager::get_treasury_sui_amount(pool_manager, balance::value(&pool.balance))
     }
 
+    public fun get_market_id<CoinType>(pool: &Pool<CoinType>): u64 {
+        *dynamic_field::borrow(&pool.id, MarketIdKey {})
+    }
+
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx)
@@ -378,7 +414,12 @@ module lending_core::pool {
 
     #[test_only]
     public fun create_pool_for_testing<T>(cap: &PoolAdminCap, decimal: u8, ctx: &mut TxContext) {
-        create_pool<T>(cap, decimal, ctx);
+        create_pool_with_market_id<T>(cap, decimal, 0, ctx);
+    }
+
+    #[test_only]
+    public fun create_pool_with_market_id_for_testing<T>(cap: &PoolAdminCap, decimal: u8, market_id: u64, ctx: &mut TxContext) {
+        create_pool_with_market_id<T>(cap, decimal, market_id, ctx);
     }
 
     #[test_only]

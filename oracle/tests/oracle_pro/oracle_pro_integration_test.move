@@ -17,7 +17,7 @@ module oracle::oracle_pro_integration_test {
     use oracle::oracle_provider;
     use oracle::oracle_lib::{Self as lib};
     use oracle::oracle_constants::{Self as constants};
-    use oracle::oracle_provider::{supra_provider, pyth_provider, new_empty_provider, test_provider};
+    use oracle::oracle_provider::{supra_provider, pyth_provider, switchboard_provider, new_empty_provider, test_provider};
 
     const OWNER: address = @0xA;
 
@@ -350,6 +350,7 @@ module oracle::oracle_pro_integration_test {
 
             oracle_manage::set_pyth_price_oracle_provider_pair_id(&oracle_admin_cap, &mut oracle_config, feed_id, b"001");
             oracle_manage::set_supra_price_source_pair_id(&oracle_admin_cap, &mut oracle_config, feed_id, b"101");
+            oracle_manage::set_switchboard_price_source_pair_id(&oracle_admin_cap, &mut oracle_config, feed_id, b"201");
 
             test_scenario::return_to_sender(scenario, oracle_admin_cap);
             test_scenario::return_shared(price_oracle);
@@ -372,6 +373,10 @@ module oracle::oracle_pro_integration_test {
 
             let pair = config::get_pair_id_from_oracle_provider_config(secondary_config);
             assert!(pair == b"101", 0);
+
+            let switchboard_config = config::get_oracle_provider_config_from_feed(feed, switchboard_provider());
+            let pair = config::get_pair_id_from_oracle_provider_config(switchboard_config);
+            assert!(pair == b"201", 0);
 
             test_scenario::return_to_sender(scenario, oracle_admin_cap);
             test_scenario::return_shared(price_oracle);

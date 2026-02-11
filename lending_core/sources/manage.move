@@ -13,13 +13,19 @@ module lending_core::manage {
     use lending_core::flash_loan::{Self, Config as FlashLoanConfig};
     use lending_core::incentive_v2::{OwnerCap as IncentiveOwnerCap};
     use lending_core::incentive_v3::{Self, Incentive as IncentiveV3, RewardFund};
+    use lending_core::storage::EmodeAsset;
 
     struct BorrowFeeCap has key, store {
         id: UID,
     }
 
+    #[allow(unused_variable)]
     public fun create_flash_loan_config(_: &StorageAdminCap, ctx: &mut TxContext) {
-        flash_loan::create_config(ctx)
+        abort 0;
+    }
+
+    public fun create_flash_loan_config_with_storage(_: &StorageAdminCap, storage: &Storage, ctx: &mut TxContext) {
+        flash_loan::create_config_with_market_id(storage, ctx)
     }
 
     public fun create_flash_loan_asset<T>(
@@ -36,6 +42,8 @@ module lending_core::manage {
     ) {
         let reserves_count = storage::get_reserves_count(storage);
         assert!(asset_id < reserves_count, error::reserve_not_found());
+        assert!(flash_loan::get_market_id(config) == storage::get_market_id(storage), error::unmatched_market_id());
+        assert!(storage::get_market_id(storage) == pool::get_market_id(pool), error::unmatched_market_id());
 
         let coin_type_from_storage = storage::get_coin_type(storage, asset_id);
         assert!(type_name::into_string(type_name::get<T>()) == coin_type_from_storage, error::invalid_coin_type());
@@ -101,7 +109,11 @@ module lending_core::manage {
     }
 
     public fun create_incentive_v3_reward_fund<T>(_: &IncentiveOwnerCap, ctx: &mut TxContext) {
-        incentive_v3::create_reward_fund<T>(ctx)
+        abort 0;
+    }
+
+    public fun create_incentive_v3_reward_fund_with_storage<T>(_: &IncentiveOwnerCap, storage: &Storage, ctx: &mut TxContext) {
+        incentive_v3::create_reward_fund_with_market_id<T>(storage, ctx)
     }
 
     #[allow(lint(self_transfer))]
@@ -121,7 +133,11 @@ module lending_core::manage {
     }
 
     public fun create_incentive_v3(_: &IncentiveOwnerCap, ctx: &mut TxContext) {
-        incentive_v3::create_incentive_v3(ctx)
+        abort 0;
+    }
+
+    public fun create_incentive_v3_with_storage(_: &IncentiveOwnerCap, storage: &Storage, ctx: &mut TxContext) {
+        incentive_v3::create_incentive_v3_with_market_id(storage, ctx)
     }
 
     public fun create_incentive_v3_pool<T>(_: &IncentiveOwnerCap, incentive: &mut IncentiveV3, storage: &Storage, asset_id: u8, ctx: &mut TxContext) {
@@ -189,4 +205,41 @@ module lending_core::manage {
     public fun set_protected_liquidation_users(_: &StorageOwnerCap, storage: &mut Storage, user: address, is_protected: bool) {
         storage::set_protected_liquidation_users(storage, user, is_protected)
     }
+
+    public fun create_emode_asset(_: &StorageAdminCap, asset: u8, is_collateral: bool, is_debt: bool, ltv: u256, lt: u256, liquidation_bonus: u256): EmodeAsset {
+        storage::create_emode_asset(asset, is_collateral, is_debt, ltv, lt, liquidation_bonus)
+    }
+
+    public fun create_emode_pair(_: &StorageAdminCap, storage: &mut Storage, assetA: EmodeAsset, assetB: EmodeAsset) {
+        storage::create_emode_pair(storage, assetA, assetB)
+    }
+    
+    public fun set_emode_config_active(_: &StorageAdminCap, storage: &mut Storage, emode_id: u64, is_active: bool) {
+        storage::set_emode_config_active(storage, emode_id, is_active)
+    }
+
+    public fun set_emode_asset_lt(_: &StorageAdminCap, storage: &mut Storage, emode_id: u64, asset: u8, lt: u256) {
+        storage::set_emode_asset_lt(storage, emode_id, asset, lt)
+    }
+    
+    public fun set_emode_asset_ltv(_: &StorageAdminCap, storage: &mut Storage, emode_id: u64, asset: u8, ltv: u256) {
+        storage::set_emode_asset_ltv(storage, emode_id, asset, ltv)
+    }
+
+    public fun set_emode_asset_liquidation_bonus(_: &StorageAdminCap, storage: &mut Storage, emode_id: u64, asset: u8, liquidation_bonus: u256) {
+        storage::set_emode_asset_liquidation_bonus(storage, emode_id, asset, liquidation_bonus)
+    }
+
+    public fun create_new_market(_: &StorageAdminCap, main_storage: &mut Storage, ctx: &mut TxContext) {
+        storage::create_new_market(main_storage, ctx)
+    }
+
+    public fun set_borrow_weight(_: &StorageAdminCap, storage: &mut Storage, asset: u8, weight: u64) {
+        storage::set_borrow_weight(storage, asset, weight)
+    }
+
+    public fun remove_borrow_weight(_: &StorageAdminCap, storage: &mut Storage, asset: u8) {
+        storage::remove_borrow_weight(storage, asset)
+    }
+
 }

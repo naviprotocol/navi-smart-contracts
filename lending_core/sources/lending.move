@@ -1,7 +1,6 @@
 #[allow(unused_mut_parameter, unused_function)]
 module lending_core::lending {
     use sui::balance::{Self, Balance};
-    use sui::event::emit;
     use sui::clock::{Clock};
     use sui::coin::{Self, Coin};
     use sui::tx_context::{Self, TxContext};
@@ -15,6 +14,7 @@ module lending_core::lending {
     use lending_core::account::{Self, AccountCap};
     use lending_core::error::{Self};
     use lending_core::flash_loan::{Self, Config as FlashLoanConfig, Receipt as FlashLoanReceipt};
+    use lending_core::event;
 
     use sui_system::sui_system::{SuiSystemState};
 
@@ -185,6 +185,8 @@ module lending_core::lending {
     ) {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
+        storage::verify_emode_support(storage, user, asset, true, false);
+        verify_market_storage_pool(storage, pool); 
 
         let deposit_amount = balance::value(&deposit_balance);
         pool::deposit_balance(pool, deposit_balance, user);
@@ -192,11 +194,8 @@ module lending_core::lending {
         let normal_deposit_amount = pool::normal_amount(pool, deposit_amount);
         logic::execute_deposit<CoinType>(clock, storage, asset, user, (normal_deposit_amount as u256));
 
-        emit(DepositEvent {
-            reserve: asset,
-            sender: user,
-            amount: deposit_amount,
-        })
+        let market_id = storage::get_market_id(storage);
+        event::emit_deposit_event(asset, user, deposit_amount, market_id)
     }
 
     // Non-Entry: Withdraw Function
@@ -241,6 +240,7 @@ module lending_core::lending {
     ): Balance<CoinType> {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
+        verify_market_storage_pool(storage, pool);
 
         let normal_withdraw_amount = pool::normal_amount(pool, amount);
         let normal_withdrawable_amount = logic::execute_withdraw<CoinType>(
@@ -254,12 +254,8 @@ module lending_core::lending {
 
         let withdrawable_amount = pool::unnormal_amount(pool, normal_withdrawable_amount);
         let _balance = pool::withdraw_balance(pool, withdrawable_amount, user);
-        emit(WithdrawEvent {
-            reserve: asset,
-            sender: user,
-            to: user,
-            amount: withdrawable_amount,
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_withdraw_event(asset, user, user, withdrawable_amount, market_id);
 
         return _balance
     }
@@ -278,6 +274,7 @@ module lending_core::lending {
     ): Balance<CoinType> {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
+        verify_market_storage_pool(storage, pool);
 
         let normal_withdraw_amount = pool::normal_amount(pool, amount);
         let normal_withdrawable_amount = logic::execute_withdraw<CoinType>(
@@ -291,12 +288,8 @@ module lending_core::lending {
 
         let withdrawable_amount = pool::unnormal_amount(pool, normal_withdrawable_amount);
         let _balance = pool::withdraw_balance_v2(pool, withdrawable_amount, user, system_state, ctx);
-        emit(WithdrawEvent {
-            reserve: asset,
-            sender: user,
-            to: user,
-            amount: withdrawable_amount,
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_withdraw_event(asset, user, user, withdrawable_amount, market_id);
 
         return _balance
     }
@@ -343,16 +336,15 @@ module lending_core::lending {
     ): Balance<CoinType> {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
+        storage::verify_emode_support(storage, user, asset, false, true);
+        verify_market_storage_pool(storage, pool);
 
         let normal_borrow_amount = pool::normal_amount(pool, amount);
         logic::execute_borrow<CoinType>(clock, oracle, storage, asset, user, (normal_borrow_amount as u256));
 
         let _balance = pool::withdraw_balance(pool, amount, user);
-        emit(BorrowEvent {
-            reserve: asset,
-            sender: user,
-            amount: amount
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_borrow_event(asset, user, amount, market_id);
 
         return _balance
     }
@@ -370,16 +362,15 @@ module lending_core::lending {
     ): Balance<CoinType> {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
+        storage::verify_emode_support(storage, user, asset, false, true);
+        verify_market_storage_pool(storage, pool);
 
         let normal_borrow_amount = pool::normal_amount(pool, amount);
         logic::execute_borrow<CoinType>(clock, oracle, storage, asset, user, (normal_borrow_amount as u256));
 
         let _balance = pool::withdraw_balance_v2(pool, amount, user, system_state, ctx);
-        emit(BorrowEvent {
-            reserve: asset,
-            sender: user,
-            amount: amount
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_borrow_event(asset, user, amount, market_id);
 
         return _balance
     }
@@ -414,6 +405,7 @@ module lending_core::lending {
     ): Balance<CoinType> {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
+        verify_market_storage_pool(storage, pool);
 
         let repay_amount = balance::value(&repay_balance);
         pool::deposit_balance(pool, repay_balance, user);
@@ -423,11 +415,8 @@ module lending_core::lending {
         let normal_excess_amount = logic::execute_repay<CoinType>(clock, oracle, storage, asset, user, (normal_repay_amount as u256));
         let excess_amount = pool::unnormal_amount(pool, (normal_excess_amount as u64));
 
-        emit(RepayEvent {
-            reserve: asset,
-            sender: user,
-            amount: repay_amount - excess_amount
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_repay_event(asset, user, repay_amount - excess_amount, market_id);
 
         if (excess_amount > 0) {
             let _balance = pool::direct_withdraw_balance_v2(pool, excess_amount, user);
@@ -584,7 +573,9 @@ module lending_core::lending {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
         storage::when_liquidatable(storage, executor, liquidate_user);
-
+        verify_market_storage_pool(storage, debt_pool);
+        verify_market_storage_pool(storage, collateral_pool);
+        
         let debt_amount = balance::value(&debt_balance);
         pool::deposit_balance(debt_pool, debt_balance, executor);
 
@@ -621,17 +612,19 @@ module lending_core::lending {
         let (_, collateral_price, _) = oracle::get_token_price(clock, oracle, collateral_oracle_id);
         let (_, debt_price, _) = oracle::get_token_price(clock, oracle, debt_oracle_id);
 
-        emit(LiquidationEvent {
-            sender: executor,
-            user: liquidate_user,
-            collateral_asset: collateral_asset,
-            collateral_price: collateral_price,
-            collateral_amount: obtainable_amount + treasury_amount,
-            treasury: treasury_amount,
-            debt_asset: debt_asset,
-            debt_price: debt_price,
-            debt_amount: debt_amount - excess_amount,
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_liquidation_event(
+            executor,
+            liquidate_user,
+            collateral_asset,
+            collateral_price,
+            obtainable_amount + treasury_amount,
+            treasury_amount,
+            debt_asset,
+            debt_price,
+            debt_amount - excess_amount,
+            market_id
+        );
 
         return (excess_balance, obtainable_balance)
     }
@@ -653,6 +646,8 @@ module lending_core::lending {
         storage::when_not_paused(storage);
         storage::version_verification(storage);
         storage::when_liquidatable(storage, executor, liquidate_user);
+        verify_market_storage_pool(storage, debt_pool);
+        verify_market_storage_pool(storage, collateral_pool);
 
         let debt_amount = balance::value(&debt_balance);
         pool::deposit_balance(debt_pool, debt_balance, executor);
@@ -690,17 +685,19 @@ module lending_core::lending {
         let (_, collateral_price, _) = oracle::get_token_price(clock, oracle, collateral_oracle_id);
         let (_, debt_price, _) = oracle::get_token_price(clock, oracle, debt_oracle_id);
 
-        emit(LiquidationEvent {
-            sender: executor,
-            user: liquidate_user,
-            collateral_asset: collateral_asset,
-            collateral_price: collateral_price,
-            collateral_amount: obtainable_amount + treasury_amount,
-            treasury: treasury_amount,
-            debt_asset: debt_asset,
-            debt_price: debt_price,
-            debt_amount: debt_amount - excess_amount,
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_liquidation_event(
+            executor,
+            liquidate_user,
+            collateral_asset,
+            collateral_price,
+            obtainable_amount + treasury_amount,
+            treasury_amount,
+            debt_asset,
+            debt_price,
+            debt_amount - excess_amount,
+            market_id
+        );
 
         return (excess_balance, obtainable_balance)
     }
@@ -791,14 +788,17 @@ module lending_core::lending {
 
     // Flash Loan
     fun base_flash_loan<CoinType>(config: &FlashLoanConfig, pool: &mut Pool<CoinType>, user: address, amount: u64): (Balance<CoinType>, FlashLoanReceipt<CoinType>) {
+        verify_market_flash_loan_config_pool(config, pool);
         flash_loan::loan<CoinType>(config, pool, user, amount)
     }
 
     fun base_flash_loan_v2<CoinType>(config: &FlashLoanConfig, pool: &mut Pool<CoinType>, user: address, amount: u64, system_state: &mut SuiSystemState, ctx: &mut TxContext): (Balance<CoinType>, FlashLoanReceipt<CoinType>) {
+        verify_market_flash_loan_config_pool(config, pool);
         flash_loan::loan_v2<CoinType>(config, pool, user, amount, system_state, ctx)
     }
 
     fun base_flash_repay<CoinType>(clock: &Clock, storage: &mut Storage, pool: &mut Pool<CoinType>, receipt: FlashLoanReceipt<CoinType>, user: address, repay_balance: Balance<CoinType>): Balance<CoinType> {
+        verify_market_storage_pool(storage, pool);
         flash_loan::repay<CoinType>(clock, storage, pool, receipt, user, repay_balance)
     }
 
@@ -832,12 +832,8 @@ module lending_core::lending {
         let deposit_balance = utils::split_coin_to_balance(deposit_coin, value, ctx);
         base_deposit(clock, storage, pool, asset, user, deposit_balance);
 
-        emit(DepositOnBehalfOfEvent{
-            reserve: asset,
-            sender: tx_context::sender(ctx),
-            user: user,
-            amount: value,
-        })
+        let market_id = storage::get_market_id(storage);
+        event::emit_deposit_on_behalf_of_event(asset, tx_context::sender(ctx), user, value, market_id)
     }
 
     public(friend) fun repay_on_behalf_of_user<CoinType>(clock: &Clock, oracle: &PriceOracle, storage: &mut Storage, pool: &mut Pool<CoinType>, asset: u8, user: address, repay_coin: Coin<CoinType>, value: u64, ctx: &mut TxContext): Balance<CoinType> {
@@ -845,13 +841,48 @@ module lending_core::lending {
         let _balance = base_repay(clock, oracle, storage, pool, asset, repay_balance, user);
 
         let balance_value = balance::value(&_balance);
-        emit(RepayOnBehalfOfEvent{
-            reserve: asset,
-            sender: tx_context::sender(ctx),
-            user: user,
-            amount: value - balance_value,
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_repay_on_behalf_of_event(asset, tx_context::sender(ctx), user, value - balance_value, market_id);
 
         _balance
+    }
+
+    public fun verify_market_storage_pool<CoinType>(storage: &Storage, pool: &Pool<CoinType>) {
+        assert!(storage::get_market_id(storage) == pool::get_market_id(pool), error::unmatched_market_id());
+    }
+
+    public fun verify_market_flash_loan_config_pool<CoinType>(config: &FlashLoanConfig, pool: &Pool<CoinType>) {
+        assert!(flash_loan::get_market_id(config) == pool::get_market_id(pool), error::unmatched_market_id());
+    }
+
+
+    // ------------------ Emode related functions ------------------
+    public fun enter_emode(storage: &mut Storage, emode_id: u64, ctx: &mut TxContext) {
+        logic::enter_emode(storage, emode_id, tx_context::sender(ctx))
+    }
+
+    public fun enter_emode_with_account_cap(storage: &mut Storage, emode_id: u64, account_cap: &AccountCap) {
+        logic::enter_emode(storage, emode_id, account::account_owner(account_cap))
+    }
+
+    public fun exit_emode(storage: &mut Storage, ctx: &mut TxContext) {
+        logic::exit_emode(storage, tx_context::sender(ctx))
+    }
+
+    public fun exit_emode_with_account_cap(storage: &mut Storage, account_cap: &AccountCap) {
+        logic::exit_emode(storage, account::account_owner(account_cap))
+    }
+
+    // ------------------ State related functions ------------------
+    public fun update_state_of_user(clock: &Clock, storage: &mut Storage, user: address) {
+        // version control checked in storage::update_state
+        storage::when_not_paused(storage);
+        logic::update_state_of_user(clock, storage, user)
+    }
+
+    public fun update_state_of_all(clock: &Clock, storage: &mut Storage) {
+        // version control checked in storage::update_state
+        storage::when_not_paused(storage);
+        logic::update_state_of_all(clock, storage)
     }
 }

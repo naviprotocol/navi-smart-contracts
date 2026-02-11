@@ -11,6 +11,8 @@ module lending_core::logic {
     use lending_core::storage::{Self, Storage};
     use lending_core::error::{Self};
     use sui::event::emit;
+    use lending_core::constants::{Self};
+    use lending_core::event;
 
     friend lending_core::lending;
     friend lending_core::flash_loan;
@@ -78,7 +80,7 @@ module lending_core::logic {
         /////////////////////////////////////////////////////////////////
         // Update borrow_index, supply_index, last_timestamp, treasury //
         /////////////////////////////////////////////////////////////////
-        update_state_of_all(clock, storage);
+        update_state_of_user(clock, storage, user);
 
         validation::validate_withdraw<CoinType>(storage, asset, amount);
 
@@ -128,7 +130,9 @@ module lending_core::logic {
         //////////////////////////////////////////////////////////////////
         // Update borrow_index, supply_index, last_timestamp, treasury  //
         //////////////////////////////////////////////////////////////////
-        update_state_of_all(clock, storage);
+        
+        update_state(clock, storage, asset);
+        update_state_of_user(clock, storage, user);
 
         validation::validate_borrow<CoinType>(storage, asset, amount);
 
@@ -148,7 +152,8 @@ module lending_core::logic {
         // Checking user health factors //
         //////////////////////////////////
         let avg_ltv = calculate_avg_ltv(clock, oracle, storage, user);
-        let avg_threshold = calculate_avg_threshold(clock, oracle, storage, user);
+        let avg_threshold = dynamic_liquidation_threshold(clock, storage, oracle,user);
+
         assert!(avg_ltv > 0 && avg_threshold > 0, error::ltv_is_not_enough());
         let health_factor_in_borrow = ray_math::ray_div(avg_threshold, avg_ltv);
         let health_factor = user_health_factor(clock, storage, oracle, user);
@@ -165,7 +170,7 @@ module lending_core::logic {
     public(friend) fun execute_repay<CoinType>(clock: &Clock, _oracle: &PriceOracle, storage: &mut Storage, asset: u8, user: address, amount: u256): u256 {
         assert!(user_loan_balance(storage, asset, user) > 0, error::user_have_no_loan());
 
-        update_state_of_all(clock, storage);
+        update_state_of_user(clock, storage, user);
 
         validation::validate_repay<CoinType>(storage, asset, amount);
 
@@ -204,7 +209,9 @@ module lending_core::logic {
         // check if the user's liquidated assets are collateralized
         assert!(is_collateral(storage, collateral_asset, user), error::user_have_no_collateral());
 
-        update_state_of_all(clock, storage);
+        update_state(clock, storage, debt_asset);
+        update_state(clock, storage, collateral_asset);
+        update_state_of_user(clock, storage, user);
 
         validation::validate_liquidate<CoinType, CollateralCoinType>(storage, debt_asset, collateral_asset, amount);
 
@@ -248,6 +255,27 @@ module lending_core::logic {
             update_state(clock, storage, i);
             i = i + 1;
         }
+    }
+
+    // Update the state of the user's assets
+    // Assume the user has both collateral and loan assets, otherwise the function will cost a bit more gas
+    public(friend) fun update_state_of_user(clock: &Clock, storage: &mut Storage, user: address) {
+        let (collaterals, loans) = storage::get_user_assets(storage, user);
+        let len = vector::length(&collaterals);
+        let i = 0;
+        while (i < len) {
+            let asset = vector::borrow(&collaterals, i);
+            update_state(clock, storage, *asset);
+            i = i + 1;
+        };
+
+        let len = vector::length(&loans);
+        let i = 0;
+        while (i < len) {
+            let asset = vector::borrow(&loans, i);
+            update_state(clock, storage, *asset);
+            i = i + 1;
+        };
     }
 
     /**
@@ -377,10 +405,9 @@ module lending_core::logic {
      * Returns: RAY.
      */
     public fun user_health_factor(clock: &Clock, storage: &mut Storage, oracle: &PriceOracle, user: address): u256 {
-        // 
         let health_collateral_value = user_health_collateral_value(clock, oracle, storage, user); // 202500000000000
         let dynamic_liquidation_threshold = dynamic_liquidation_threshold(clock, storage, oracle, user); // 650000000000000000000000000
-        let health_loan_value = user_health_loan_value(clock, oracle, storage, user); // 49500000000
+        let health_loan_value = weighted_user_health_loan_value(clock, oracle, storage, user); // 49500000000
         if (health_loan_value > 0) {
             // H = TotalCollateral * LTV * Threshold / TotalBorrow
             let ratio = ray_math::ray_div(health_collateral_value, health_loan_value);
@@ -395,19 +422,28 @@ module lending_core::logic {
         let (collaterals, _) = storage::get_user_assets(storage, user);
         let len = vector::length(&collaterals);
         let i = 0;
+        let in_emode = storage::is_in_emode(storage, user);
 
         let collateral_value = 0;
         let collateral_health_value = 0;
 
         while (i < len) {
             let asset = vector::borrow(&collaterals, i);
-            let (_, _, threshold) = storage::get_liquidation_factors(storage, *asset); // liquidation threshold for coin
+            let (_, _, threshold) = storage::get_liquidation_factors(storage, *asset);
+
+            // emode override the threshold
+            if (in_emode) {
+                let emode_id = storage::get_user_emode_id(storage, user);
+                 (_, threshold, _) = storage::get_emode_asset_info(storage, emode_id, *asset);
+            };
+
             let user_collateral_value = user_collateral_value(clock, oracle, storage, *asset, user); // total collateral in usd
 
             collateral_health_value = collateral_health_value + ray_math::ray_mul(user_collateral_value, threshold);
             collateral_value = collateral_value + user_collateral_value;
             i = i + 1;
         };
+
 
         if (collateral_value > 0) {
             return ray_math::ray_div(collateral_health_value, collateral_value)
@@ -452,6 +488,26 @@ module lending_core::logic {
             let asset = vector::borrow(&loans, i);
             let loan_value = user_loan_value(clock, oracle, storage, *asset, user);
             value = value + loan_value;
+            i = i + 1;
+        };
+        value
+    }
+
+    // user_health_loan_value scaled by borrow weight
+    public fun weighted_user_health_loan_value(clock: &Clock, oracle: &PriceOracle, storage: &mut Storage, user: address): u256 {
+        let (_, loans) = storage::get_user_assets(storage, user);
+        let len = vector::length(&loans);
+        let value = 0;
+        let i = 0;
+        while (i < len) {
+            let asset = vector::borrow(&loans, i);
+            let loan_value = user_loan_value(clock, oracle, storage, *asset, user);
+
+            // borrow weight scaled loan value
+            let borrow_weight = storage::get_borrow_weight(storage, *asset);
+            let scaled_loan_value = loan_value * (borrow_weight as u256) / (constants::percentage_benchmark() as u256);
+
+            value = value + scaled_loan_value;
             i = i + 1;
         };
         value
@@ -526,12 +582,20 @@ module lending_core::logic {
         debt_asset: u8,
         repay_amount: u256, // 6000u
     ): (u256, u256, u256, u256, u256, bool) {
+        let in_emode = storage::is_in_emode(storage, user);
         /*
             Assumed:
                 liquidation_ratio = 35%, liquidation_bonus = 5%
                 treasury_factor = 10%
         */
         let (liquidation_ratio, liquidation_bonus, _) = storage::get_liquidation_factors(storage, collateral_asset);
+
+        // emode override the liquidation bonus
+        if (in_emode) {
+            let emode_id = storage::get_user_emode_id(storage, user);
+            (_, _, liquidation_bonus) = storage::get_emode_asset_info(storage, emode_id, collateral_asset);
+        };
+
         let treasury_factor = storage::get_treasury_factor(storage, collateral_asset);
 
         let collateral_value = user_collateral_value(clock, oracle, storage, collateral_asset, user);
@@ -633,19 +697,28 @@ module lending_core::logic {
 
     public fun calculate_avg_ltv(clock: &Clock, oracle: &PriceOracle, storage: &mut Storage, user: address): u256 {
         let (collateral_assets, _) = storage::get_user_assets(storage, user);
+        let in_emode = storage::is_in_emode(storage, user);
 
         let i = 0;
         let total_value = 0;
         let total_value_in_ltv = 0;
+
         while (i < vector::length(&collateral_assets)) {
             let asset_id = vector::borrow(&collateral_assets, i);
             let ltv = storage::get_asset_ltv(storage, *asset_id);
+
+            // emode override the ltv
+            if (in_emode) {
+                let emode_id = storage::get_user_emode_id(storage, user);
+                (ltv, _, _) = storage::get_emode_asset_info(storage, emode_id, *asset_id);
+            };
+
             let user_collateral_value = user_collateral_value(clock, oracle, storage, *asset_id, user);
             total_value = total_value + user_collateral_value;
             total_value_in_ltv = total_value_in_ltv + ray_math::ray_mul(ltv, user_collateral_value);
-
             i = i + 1;
         };
+        
 
         if (total_value > 0) {
             return ray_math::ray_div(total_value_in_ltv, total_value)
@@ -653,39 +726,31 @@ module lending_core::logic {
         0
     }
 
+    // this is logically the same as dynamic_liquidation_threshold
+    // was used in old version, now is a pure getter function
     public fun calculate_avg_threshold(clock: &Clock, oracle: &PriceOracle, storage: &mut Storage, user: address): u256 {
-        let (collateral_assets, _) = storage::get_user_assets(storage, user);
-
-        let i = 0;
-        let total_value = 0;
-        let total_value_in_threshold = 0;
-        while (i < vector::length(&collateral_assets)) {
-            let asset_id = vector::borrow(&collateral_assets, i);
-            let (_, _, threshold) = storage::get_liquidation_factors(storage, *asset_id);
-            let user_collateral_value = user_collateral_value(clock, oracle, storage, *asset_id, user);
-            total_value = total_value + user_collateral_value;
-            total_value_in_threshold = total_value_in_threshold + ray_math::ray_mul(threshold, user_collateral_value);
-
-            i = i + 1;
-        };
-
-        if (total_value > 0) {
-            return ray_math::ray_div(total_value_in_threshold, total_value)
-        };
-        0
+        dynamic_liquidation_threshold(clock, storage, oracle, user)
     }
 
     fun emit_state_updated_event(storage: &mut Storage, asset: u8, user: address) {
         let (new_supply_index, new_borrow_index) = storage::get_index(storage, asset);
         let (user_supply_balance, user_borrow_balance) = storage::get_user_balance(storage, asset, user);
-        emit(StateUpdated {
-            user: user,
-            asset: asset, 
-            user_supply_balance: user_supply_balance, 
-            user_borrow_balance: user_borrow_balance, 
-            new_supply_index: new_supply_index, 
-            new_borrow_index: new_borrow_index
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_state_updated(user, asset, user_supply_balance, user_borrow_balance, new_supply_index, new_borrow_index, market_id);
+    }
+
+    // ------------------ Emode related functions ------------------
+    public(friend) fun enter_emode(storage: &mut Storage, emode_id: u64, user: address) {
+        // check if user have any collateral or loan
+        let (collateral_assets, loan_assets) = storage::get_user_assets(storage, user);
+        assert!(vector::is_empty(&collateral_assets) && vector::is_empty(&loan_assets), error::ineligible_for_emode());
+        storage::enter_emode(storage, emode_id, user)
+    }
+
+    public(friend) fun exit_emode(storage: &mut Storage, user: address) {
+        let (collateral_assets, loan_assets) = storage::get_user_assets(storage, user);
+        assert!(vector::is_empty(&collateral_assets) && vector::is_empty(&loan_assets), error::ineligible_for_emode());
+        storage::exit_emode(storage, user)
     }
 
     #[test_only]

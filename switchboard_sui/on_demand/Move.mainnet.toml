@@ -1,0 +1,33 @@
+[package]
+name = "Switchboard"
+edition = "2024.beta"
+version = "0.0.2"
+published-at = "0xe6717fb7c9d44706bf8ce8a651e25c0a7902d32cb0ff40c0976251ce8ac25655"
+
+# Upgrade command:
+# sui client upgrade --upgrade-capability <UpgradeCap>
+
+# Old version:
+# First Publish: 0x0b884dbc39d915f32a82cc62dabad75ca3efd3c568c329eba270b03c6f58cbd8
+# Second Publish: 0x1b03b77082cdb9d6b3febc6294f36d999d8556583616fadc84199a8e66371d60
+# Third Publish: 0xbd22434e506314abc0cd981447fbf42139fa04aa09b5a8a7d7789826883e8e0a
+# AdminCap: 0xe10be54c1686c5d5e6ccd74b7589a7362e7d075d6e4c513c8af379fdaf4c5f36
+# State: 0x90a2829005435005300abaf7ce8115814b38c8d42a6de5aaf311774c60603b68
+# UpgradeCap: 0xda0d1de2ce8afde226f66b1963c3f6afc929ab49eaeed951c723a481499e31e9
+
+# New version:
+# First Publish: 0xc3c7e6eb7202e9fb0389a2f7542b91cc40e4f7a33c02554fec11c4c92f938ea3
+# Second Publish: 0xe6717fb7c9d44706bf8ce8a651e25c0a7902d32cb0ff40c0976251ce8ac25655
+# AdminCap: 0xf02428df77e94f22df093b364d7e2b47cacb96a1856f49f5e1c4927705d50050
+# State: 0x93d2a8222bb2006d16285ac858ec2ae5f644851917504b94debde8032664a791
+# UpgradeCap: 0xe4b73392789cbda0420785a98eae24a4eef3a263317247c16fd1d192c1db2b93
+
+
+# mainnet
+[dependencies]
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "3ada97c109cc7ae1b451cb384a1f2cfae49c8d3e" }
+
+[addresses]
+switchboard = "0x0"
+std = "0x1"
+sui =  "0x2"

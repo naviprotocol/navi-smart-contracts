@@ -4,7 +4,7 @@ module lending_ui::incentive_getter {
     use std::type_name::{Self};
     use sui::clock::{Self, Clock};
 
-    use math::ray_math;
+    use lending_core::ray_math;
     use oracle::oracle::{Self, PriceOracle};
     use lending_core::pool::{Self};
     use lending_core::calculator::{Self as c};

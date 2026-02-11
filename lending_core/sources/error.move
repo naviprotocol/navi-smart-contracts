@@ -38,4 +38,11 @@ module lending_core::error {
     public fun rule_not_found(): u64 {2102}
     public fun invalid_funds(): u64 {2103}
     public fun invalid_option(): u64 {2104}
+
+    public fun duplicate_emode(): u64 {3000}
+    public fun ineligible_for_emode(): u64 {3001}
+    public fun not_in_emode(): u64 {3002}
+    public fun emode_is_not_active(): u64 {3003}
+
+    public fun unmatched_market_id(): u64 {3100}
 }

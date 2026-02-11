@@ -15,7 +15,7 @@ module oracle::oracle_provider_test {
     use oracle::oracle_provider;
     use oracle::oracle_lib::{Self as lib};
     use oracle::oracle_constants::{Self as constants};
-    use oracle::oracle_provider::{supra_provider, pyth_provider, new_empty_provider};
+    use oracle::oracle_provider::{supra_provider, pyth_provider, switchboard_provider, new_empty_provider};
 
     const OWNER: address = @0xA;
 
@@ -74,6 +74,14 @@ module oracle::oracle_provider_test {
             assert!(oracle_provider::to_string(&name) == ascii::string(b"SupraOracleProvider"), 0);
             assert!(enable, 0);
 
+            let switchboard_config = config::get_oracle_provider_config_from_feed(feed, switchboard_provider());
+            let pair = config::get_pair_id_from_oracle_provider_config(switchboard_config);
+            let name =  config::get_oracle_provider_from_oracle_provider_config(switchboard_config);
+            let enable = config::is_oracle_provider_config_enable(switchboard_config);
+            assert!(pair == b"00", 0);
+            assert!(oracle_provider::to_string(&name) == ascii::string(b"SwitchboardOracleProvider"), 0);
+            assert!(enable, 0);
+
             lib::print(primary_config);
 
             test_scenario::return_shared(price_oracle);
@@ -102,6 +110,10 @@ module oracle::oracle_provider_test {
             oracle_manage::set_primary_oracle_provider(&oracle_admin_cap, &mut oracle_config, feed_id, pyth_provider());
             oracle_manage::disable_supra_oracle_provider(&oracle_admin_cap, &mut oracle_config, feed_id); // move to here, primary oracle can not be disable
 
+            oracle_manage::set_secondary_oracle_provider(&oracle_admin_cap, &mut oracle_config, feed_id, switchboard_provider());
+            oracle_manage::set_switchboard_price_source_pair_id(&oracle_admin_cap, &mut oracle_config, feed_id, b"205");
+            oracle_manage::disable_switchboard_oracle_provider(&oracle_admin_cap, &mut oracle_config, feed_id);
+
             test_scenario::return_to_sender(scenario, oracle_admin_cap);
             test_scenario::return_shared(price_oracle);
             test_scenario::return_shared(oracle_config);
@@ -127,6 +139,12 @@ module oracle::oracle_provider_test {
             let pair = config::get_pair_id_from_oracle_provider_config(secondary_config);
             let enable = config::is_oracle_provider_config_enable(secondary_config);
             assert!(pair == b"001", 0);
+            assert!(!enable, 0);
+
+            let switchboard_config = config::get_oracle_provider_config_from_feed(feed, switchboard_provider());
+            let pair = config::get_pair_id_from_oracle_provider_config(switchboard_config);
+            let enable = config::is_oracle_provider_config_enable(switchboard_config);
+            assert!(pair == b"205", 0);
             assert!(!enable, 0);
 
             test_scenario::return_to_sender(scenario, oracle_admin_cap);

@@ -5,13 +5,19 @@
 version = 4
 
 [pinned.mainnet.MoveStdlib]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "22f9fc9781732d651e18384c9a8eb1dabddf73a6" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "563c15820b27dec9cbe75f826a3b6243ef44da1a" }
 use_environment = "mainnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
 
 [pinned.mainnet.MoveStdlib_1]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "04dd28d5c5d92bff685ddfecb86f8acce18ce6df" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "072a2111619715c3348d1b83c0526c3bcfa5cdd1" }
+use_environment = "mainnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.mainnet.MoveStdlib_2]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
 use_environment = "mainnet"
 manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
 deps = {}
@@ -23,22 +29,34 @@ manifest_digest = "C981BFE5D31B50DB795278F9617725C1C2AEDFE52970A2E02D2B563617547
 deps = { Sui = "Sui_1", Wormhole = "Wormhole" }
 
 [pinned.mainnet.Sui]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "22f9fc9781732d651e18384c9a8eb1dabddf73a6" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "563c15820b27dec9cbe75f826a3b6243ef44da1a" }
 use_environment = "mainnet"
 manifest_digest = "CD547CB1ACCE0880C835DAED2D8FFCB91D56C833AE5240D3AA5B918398263195"
 deps = { MoveStdlib = "MoveStdlib" }
 
 [pinned.mainnet.Sui_1]
-source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "04dd28d5c5d92bff685ddfecb86f8acce18ce6df" }
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "072a2111619715c3348d1b83c0526c3bcfa5cdd1" }
 use_environment = "mainnet"
 manifest_digest = "CD547CB1ACCE0880C835DAED2D8FFCB91D56C833AE5240D3AA5B918398263195"
 deps = { MoveStdlib = "MoveStdlib_1" }
+
+[pinned.mainnet.Sui_2]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+use_environment = "mainnet"
+manifest_digest = "CD547CB1ACCE0880C835DAED2D8FFCB91D56C833AE5240D3AA5B918398263195"
+deps = { MoveStdlib = "MoveStdlib_2" }
 
 [pinned.mainnet.SupraOracle]
 source = { git = "https://github.com/naviprotocol/supra-oracle.git", subdir = "supra_holder", rev = "0d41a846e75cff18da44e462260bf60c73417c8e" }
 use_environment = "mainnet"
 manifest_digest = "CDD606D609F32BF36A2C06E7DB0E6BBBA82B7EC29C58D217D0AFCED1E87ED550"
 deps = { Sui = "Sui_1", supra_validator = "supra_validator" }
+
+[pinned.mainnet.Switchboard]
+source = { local = "../switchboard_sui/on_demand" }
+use_environment = "mainnet"
+manifest_digest = "BA49968BFF7C4A4D9F013B59535CF8B89D935A7C6D63C121606B1FE844829B72"
+deps = { Sui = "Sui_2" }
 
 [pinned.mainnet.Wormhole]
 source = { git = "https://github.com/naviprotocol/wormhole.git", subdir = "sui/wormhole", rev = "7749aff1380b0f63743d36856a5934de606483ba" }
@@ -49,8 +67,8 @@ deps = { Sui = "Sui_1" }
 [pinned.mainnet.oracle]
 source = { root = true }
 use_environment = "mainnet"
-manifest_digest = "711F2701909737FF122D179CC39CDF1499011645109889F7F25F4BDFFC8D75D6"
-deps = { SupraOracle = "SupraOracle", pyth = "Pyth", std = "MoveStdlib", sui = "Sui" }
+manifest_digest = "4CAB268A410A256ECF644699EE89290129097BF4C5152476FBECA6AD693B9C42"
+deps = { SupraOracle = "SupraOracle", pyth = "Pyth", std = "MoveStdlib", sui = "Sui", switchboard = "Switchboard" }
 
 [pinned.mainnet.supra_utils]
 source = { git = "https://github.com/naviprotocol/supra-oracle.git", subdir = "supra_utils", rev = "0d41a846e75cff18da44e462260bf60c73417c8e" }
@@ -62,4 +80,82 @@ deps = { Sui = "Sui_1" }
 source = { git = "https://github.com/naviprotocol/supra-oracle.git", subdir = "supra_validator", rev = "0d41a846e75cff18da44e462260bf60c73417c8e" }
 use_environment = "mainnet"
 manifest_digest = "6972115A9F4DCD60D13D7BB34F2D42245F8743B737EA8651F3DF6669BC3D6C93"
+deps = { Sui = "Sui_1", supra_utils = "supra_utils" }
+
+[pinned.testnet.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "563c15820b27dec9cbe75f826a3b6243ef44da1a" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.MoveStdlib_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "072a2111619715c3348d1b83c0526c3bcfa5cdd1" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.MoveStdlib_2]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.Pyth]
+source = { git = "https://github.com/naviprotocol/pyth-crosschain.git", subdir = "target_chains/sui/contracts", rev = "1880b24c6acfaac101747f863c5047fff9adaa0f" }
+use_environment = "testnet"
+manifest_digest = "485F78616CB77F1A3EA3FC932926DF0B5411D2758EE2BAFA4C4652A4EF06D29B"
+deps = { Sui = "Sui_1", Wormhole = "Wormhole" }
+
+[pinned.testnet.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "563c15820b27dec9cbe75f826a3b6243ef44da1a" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.testnet.Sui_1]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "072a2111619715c3348d1b83c0526c3bcfa5cdd1" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib_1" }
+
+[pinned.testnet.Sui_2]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c7566e601c9a64154850c1cb074a90d7fc11bba4" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib_2" }
+
+[pinned.testnet.SupraOracle]
+source = { git = "https://github.com/naviprotocol/supra-oracle.git", subdir = "supra_holder", rev = "0d41a846e75cff18da44e462260bf60c73417c8e" }
+use_environment = "testnet"
+manifest_digest = "9C02A35D78AABF65198AAF05ECD1263DA17CF8CDC9057DBD530C7A2EEC5B1DF4"
+deps = { Sui = "Sui_1", supra_validator = "supra_validator" }
+
+[pinned.testnet.Switchboard]
+source = { local = "../switchboard_sui/on_demand" }
+use_environment = "testnet"
+manifest_digest = "DEE42C89BB3F8EC67C17BC4AE0CEBE14A28F4FA787E857046EAF0FA38D556496"
+deps = { Sui = "Sui_2" }
+
+[pinned.testnet.Wormhole]
+source = { git = "https://github.com/naviprotocol/wormhole.git", subdir = "sui/wormhole", rev = "7749aff1380b0f63743d36856a5934de606483ba" }
+use_environment = "testnet"
+manifest_digest = "C2772B976EC6A56C32071C116C869B6B810C731713A3E79642606E99AE1F55DA"
+deps = { Sui = "Sui_1" }
+
+[pinned.testnet.oracle]
+source = { root = true }
+use_environment = "testnet"
+manifest_digest = "F5053D475DD8F9116DFA91AE142501FCE0820EC5C8D8963A9FC3DA41824E2487"
+deps = { SupraOracle = "SupraOracle", pyth = "Pyth", std = "MoveStdlib", sui = "Sui", switchboard = "Switchboard" }
+
+[pinned.testnet.supra_utils]
+source = { git = "https://github.com/naviprotocol/supra-oracle.git", subdir = "supra_utils", rev = "0d41a846e75cff18da44e462260bf60c73417c8e" }
+use_environment = "testnet"
+manifest_digest = "C2772B976EC6A56C32071C116C869B6B810C731713A3E79642606E99AE1F55DA"
+deps = { Sui = "Sui_1" }
+
+[pinned.testnet.supra_validator]
+source = { git = "https://github.com/naviprotocol/supra-oracle.git", subdir = "supra_validator", rev = "0d41a846e75cff18da44e462260bf60c73417c8e" }
+use_environment = "testnet"
+manifest_digest = "20910F73E6DB180B11201B71A872B16AED4CFEF8AAE1428E33839CB5860A569E"
 deps = { Sui = "Sui_1", supra_utils = "supra_utils" }

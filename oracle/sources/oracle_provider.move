@@ -53,6 +53,12 @@ module oracle::oracle_provider {
         }
     }
 
+    public fun switchboard_provider(): OracleProvider {
+        OracleProvider {
+            name: ascii::string(b"SwitchboardOracleProvider"),
+        }
+    }
+
     public fun new_empty_provider(): OracleProvider {
         OracleProvider {
             name: ascii::string(b""),

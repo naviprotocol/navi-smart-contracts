@@ -2,7 +2,7 @@
 chain-id = "35834a8a"
 published-at = "0xee0041239b89564ce870a7dec5ddc5d114367ab94a1137e90aa0633cb76518e0"
 original-id = "0xd899cf7d2b5db716bd2cf55599fb0d5ee38a3061e7b6bb6eebf73fa5bc4c81ca"
-version = 23
+version = 24
 
 [published.development]
 chain-id = "35834a8a"

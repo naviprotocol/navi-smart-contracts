@@ -3,7 +3,6 @@ module lending_core::validation {
     use lending_core::ray_math::{Self};
     use lending_core::storage::{Self, Storage};
     use lending_core::error::{Self};
-
     /** 
      * Title: Validates a deposit action
      * storage: -

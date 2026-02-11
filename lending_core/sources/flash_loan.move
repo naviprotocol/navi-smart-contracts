@@ -17,8 +17,10 @@ module lending_core::flash_loan {
     use lending_core::constants::{Self};
     use lending_core::pool::{Self, Pool};
     use lending_core::storage::{Self, Storage, StorageAdminCap};
+    use sui::dynamic_field::{Self};
+    use lending_core::event::{Self};
 
-    use sui_system::sui_system::{Self, SuiSystemState};
+    use sui_system::sui_system::{SuiSystemState};
 
     friend lending_core::manage;
     friend lending_core::lending;
@@ -49,6 +51,10 @@ module lending_core::flash_loan {
         fee_to_supplier: u64,
         fee_to_treasury: u64,
     }
+
+    // === dynamic field keys ===
+    struct MARKET_ID_KEY has copy, drop, store {}
+
 
     public fun version_verification(config: &Config) {
         version::pre_check_version(config.version)
@@ -85,8 +91,22 @@ module lending_core::flash_loan {
         fee_to_treasury: u64,
     }
 
-    // Flash Loan Manage
+    // DEPRECATED: use create_config_with_market_id instead
+    #[allow(unused)]
     public(friend) fun create_config(ctx: &mut TxContext) {
+        abort 0
+    }
+
+    // only current main market needs to be initialized
+    // other markets will be initialized when creating reserves
+    public fun init_config_for_main_market(_: &StorageAdminCap, config: &mut Config) {
+        dynamic_field::add(&mut config.id, MARKET_ID_KEY {}, (0 as u64));
+    }
+
+    // Flash Loan Manage
+    public(friend) fun create_config_with_market_id(storage: &Storage, ctx: &mut TxContext) {
+        let market_id = storage::get_market_id(storage);
+
         let new_id = object::new(ctx);
         let new_object_address = object::uid_to_address(&new_id);
 
@@ -96,8 +116,10 @@ module lending_core::flash_loan {
             assets: table::new<address, AssetConfig>(ctx),
             support_assets: table::new<vector<u8>, address>(ctx),
         };
-        emit(ConfigCreated {sender: tx_context::sender(ctx), id: new_object_address});
 
+        dynamic_field::add(&mut cfg.id, MARKET_ID_KEY {}, market_id);
+
+        event::emit_config_created(tx_context::sender(ctx), new_object_address, market_id);
         transfer::share_object(cfg)
     }
 
@@ -132,11 +154,13 @@ module lending_core::flash_loan {
         table::add(&mut config.assets, new_obj_address, asset);
         table::add(&mut config.support_assets, *ascii::as_bytes(&_coin_type), new_obj_address);
 
-        emit(AssetConfigCreated {
-            sender: tx_context::sender(ctx),
-            config_id: object::uid_to_address(&config.id),
-            asset_id: new_obj_address,
-        })
+        let market_id = get_market_id(config);
+        event::emit_asset_config_created(
+            tx_context::sender(ctx),
+            object::uid_to_address(&config.id),
+            new_obj_address,
+            market_id
+        )
     }
 
     // Flash Loan Options
@@ -165,11 +189,8 @@ module lending_core::flash_loan {
             fee_to_treasury: to_treasury,
         };
 
-        emit(FlashLoan {
-            sender: _user,
-            asset: *asset_id,
-            amount: _loan_amount,
-        });
+        let market_id = get_market_id(config);
+        event::emit_flash_loan(_user, *asset_id, _loan_amount, market_id);
 
         (_balance, _receipt)
     }
@@ -199,16 +220,14 @@ module lending_core::flash_loan {
             fee_to_treasury: to_treasury,
         };
 
-        emit(FlashLoan {
-            sender: _user,
-            asset: *asset_id,
-            amount: _loan_amount,
-        });
+        let market_id = get_market_id(config);
+        event::emit_flash_loan(_user, *asset_id, _loan_amount, market_id);
 
         (_balance, _receipt)
     }
 
     public(friend) fun repay<CoinType>(clock: &Clock, storage: &mut Storage, _pool: &mut Pool<CoinType>, _receipt: Receipt<CoinType>, _user: address, _repay_balance: Balance<CoinType>): Balance<CoinType> {
+        storage::when_not_paused(storage);
         let Receipt {user, asset, amount, pool, fee_to_supplier, fee_to_treasury} = _receipt;
         assert!(user == _user, error::invalid_user());
         assert!(pool == object::uid_to_address(pool::uid(_pool)), error::invalid_pool());
@@ -233,13 +252,8 @@ module lending_core::flash_loan {
         pool::deposit_balance(_pool, repay, _user);
         pool::deposit_treasury(_pool, fee_to_treasury);
 
-        emit(FlashRepay {
-            sender: _user,
-            asset: asset,
-            amount: amount,
-            fee_to_supplier: fee_to_supplier,
-            fee_to_treasury: fee_to_treasury,
-        });
+        let market_id = storage::get_market_id(storage);
+        event::emit_flash_repay(_user, asset, amount, fee_to_supplier, fee_to_treasury, market_id);
 
         _repay_balance
     }
@@ -326,5 +340,14 @@ module lending_core::flash_loan {
     fun verify_config(cfg: &AssetConfig) {
         assert!(cfg.rate_to_supplier + cfg.rate_to_treasury < constants::FlashLoanMultiple(), error::invalid_amount());
         assert!(cfg.min < cfg.max, error::invalid_amount());
+    }
+    
+    public fun get_market_id(config: &Config): u64 {
+        *dynamic_field::borrow<MARKET_ID_KEY, u64>(&config.id, MARKET_ID_KEY {})
+    }
+
+    #[test_only]
+    public fun create_config_with_market_id_for_testing(storage: &Storage, ctx: &mut TxContext) {
+        create_config_with_market_id(storage, ctx)
     }
 }

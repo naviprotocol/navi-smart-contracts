@@ -1,0 +1,41 @@
+{
+  "name": "@switchboard-xyz/sui-sdk",
+  "version": "0.0.16",
+  "description": "API wrapper for intergating with the Switchboard program on our Sui implementation",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "package.json",
+    "package-lock.json"
+  ],
+  "scripts": {
+    "build": "pnpm exec shx rm -rf dist || true; pnpm exec tsc && pnpm exec tsc -p tsconfig.cjs.json",
+    "check-types": "tsc --noEmit",
+    "prepack": "pnpm build",
+    "test": "pnpm exec jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@brokerloop/ttlcache": "^3.2.3",
+    "@coral-xyz/anchor": "0.30.1",
+    "@mysten/sui": "^1.14.1",
+    "@switchboard-xyz/common": "^2.5.11",
+    "@switchboard-xyz/on-demand": "^1.2.56",
+    "bn.js": "^5.2.1"
+  },
+  "devDependencies": {},
+  "engines": {
+    "node": ">=12.0.0"
+  }
+}

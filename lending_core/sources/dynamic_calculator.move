@@ -9,6 +9,7 @@ module lending_core::dynamic_calculator {
     use lending_core::pool::{Self, Pool};
     use lending_core::storage::{Self, Storage};
     use lending_core::error::{Self};
+    use lending_core::constants::{Self};
 
     public fun dynamic_health_factor<CoinType>(
         clock: &Clock,
@@ -21,6 +22,7 @@ module lending_core::dynamic_calculator {
         estimate_borrow_value: u64, 
         is_increase: bool
     ): u256 {
+        storage::verify_market_storage_pool(storage, pool);
         assert!(!(estimate_supply_value > 0 && estimate_borrow_value > 0), error::non_single_value());
         let normal_estimate_supply_value: u64 = 0;
         if (estimate_supply_value > 0) {
@@ -143,7 +145,12 @@ module lending_core::dynamic_calculator {
             };
 
             let loan_value = dynamic_user_loan_value(clock, oracle, storage, *asset_t, user, estimate_value_t, is_increase);
-            value = value + loan_value;
+
+            // borrow weight scaled loan value
+            let borrow_weight = storage::get_borrow_weight(storage, *asset_t);
+            let scaled_loan_value = loan_value * (borrow_weight as u256) / (constants::percentage_benchmark() as u256);
+
+            value = value + scaled_loan_value;
             i = i + 1;
         };
         value
@@ -232,6 +239,7 @@ module lending_core::dynamic_calculator {
         let (collaterals, _) = storage::get_user_assets(storage, user);
         let len = vector::length(&collaterals);
         let i = 0;
+        let in_emode = storage::is_in_emode(storage, user);
 
         let c = collaterals;
         if (!vector::contains(&collaterals, &asset)) {
@@ -245,6 +253,12 @@ module lending_core::dynamic_calculator {
         while (i < len) {
             let asset_t = vector::borrow(&c, i);
             let (_, _, threshold) = storage::get_liquidation_factors(storage, *asset_t); // liquidation threshold for coin
+
+            // emode override the threshold
+            if (in_emode) {
+                let emode_id = storage::get_user_emode_id(storage, user);
+                (_, threshold, _) = storage::get_emode_asset_info(storage, emode_id, *asset_t);
+            };
 
             let estimate_value_t = 0;
             if (asset == *asset_t) {
@@ -296,6 +310,7 @@ module lending_core::dynamic_calculator {
         estimate_borrow_value: u64, 
         is_increase: bool
     ): (u256, u256){
+        storage::verify_market_storage_pool(storage, pool);
         assert!(!(estimate_supply_value > 0 && estimate_borrow_value > 0), error::non_single_value());
         // supply: estimate_supply_value > 0 && is_increase = true
         // withdraw: estimate_supply_value > 0 && is_increase = false

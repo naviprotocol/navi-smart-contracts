@@ -25,7 +25,7 @@ module oracle::oracle_constants {
 
     public fun multiple(): u64 { 10000 }
 
-    public fun version(): u64 { 2 }
+    public fun version(): u64 { 3 }
 
     public fun default_update_interval(): u64 {30000} // 30s
 

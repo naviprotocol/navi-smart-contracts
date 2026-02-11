@@ -1,4 +1,7 @@
 #[allow(unused_field)]
+// Deprecated: `incentive` is kept for upgrade compatibility only.
+// It no longer distributes rewards, and no new reward features will be added here.
+// All reward functionality is implemented in `lending_core::incentive_v3`.
 module lending_core::incentive {
     use std::vector;
     use std::type_name;

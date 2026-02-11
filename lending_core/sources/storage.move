@@ -2,7 +2,7 @@
 module lending_core::storage {
     use std::vector;
     use std::type_name;
-    use std::ascii::{String};
+    use std::ascii::{Self ,String, string};
 
     use sui::transfer;
     use sui::event::emit;
@@ -15,10 +15,13 @@ module lending_core::storage {
     use sui_system::sui_system::{SuiSystemState};
 
     use lending_core::ray_math;
+    use lending_core::safe_math;
+
     use lending_core::pool::{Self, Pool, PoolAdminCap};
     use lending_core::version::{Self};
     use lending_core::error::{Self};
     use lending_core::constants::{Self};
+    use lending_core::event;
 
     friend lending_core::logic;
     friend lending_core::flash_loan;
@@ -103,6 +106,33 @@ module lending_core::storage {
         threshold: u256,
     }
 
+    struct Emode has store {
+		emodes_pair: Table<u64, EmodeConfig>,
+		user_emode_id: Table<address, u64>,
+        next_emode_id: u64, // each emode has a unique id, starting from 0
+	}
+
+    struct EmodeConfig has store {
+        assetA: EmodeAsset,
+        assetB: EmodeAsset,
+        isActive: bool
+    }
+
+    struct EmodeAsset has store {
+        assetId: u8,
+        isCollateral: bool,
+        isDebt: bool,
+        ltv: u256,
+        lt: u256,
+        liquidation_bonus: u256
+    }
+
+    struct MarketInfo has store {
+        market_id: u64,
+        last_market_id: u64,
+        is_main_market: bool
+    }
+
     // Event
     struct StorageConfiguratorSetting has copy, drop {  
         sender: address,
@@ -125,17 +155,42 @@ module lending_core::storage {
         index: u256,
     }
 
-    // TODO: add the following events
-    // struct LiquidatorSet has copy, drop {
-    //     liquidator: address,
-    //     user: address,
-    //     is_liquidatable: bool
-    // } 
+    struct LiquidatorSet has copy, drop {
+        liquidator: address,
+        user: address,
+        is_liquidatable: bool
+    } 
 
-    // struct ProtectedUserSet has copy, drop {
-    //     user: address,
-    //     is_protected: address
-    // } 
+    struct ProtectedUserSet has copy, drop {
+        user: address,
+        is_protected: bool
+    } 
+    struct EmodePairCreated has copy, drop {
+        emode_id: u64,
+        assetA: u8,
+        assetB: u8,
+    }
+
+    struct EmodeParamSet has copy, drop {
+        emode_id: u64,
+        asset: u8,
+        value: u256,
+        param_type: String,
+    }
+
+    struct EmodeUserStateChanged has copy, drop {
+        user: address,
+        emode_id: u64,
+        is_entered: bool
+    }
+
+    struct MarketCreated has copy, drop { market_id: u64 }
+
+    struct BorrowWeightSet has copy, drop {
+        asset: u8,
+        weight: u64,
+    }
+    struct BorrowWeightRemoved has copy, drop { asset: u8 }
 
     // === dynamic field keys ===
     struct DESIGNATED_LIQUIDATORS_KEY has copy, drop, store {}
@@ -157,6 +212,9 @@ module lending_core::storage {
         };
 
         init_protected_liquidation_fields(&mut storage, ctx);
+        init_emode_fields(&mut storage, ctx);
+        init_borrow_weight_fields(&mut storage, ctx);
+        init_main_market(&mut storage);
 
         transfer::share_object(storage);
     }
@@ -256,7 +314,9 @@ module lending_core::storage {
         storage.reserves_count = current_idx + 1;
 
         let decimals = coin::get_decimals(coin_metadata);
-        pool::create_pool<CoinType>(pool_admin_cap, decimals, ctx);
+
+        let market_info: &MarketInfo = dynamic_field::borrow(&storage.id, MARKET_KEY {});
+        pool::create_pool_with_market_id<CoinType>(pool_admin_cap, decimals, market_info.market_id, ctx);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -266,7 +326,8 @@ module lending_core::storage {
         version_verification(storage);
 
         storage.paused = val;
-        emit(Paused {paused: val})
+        let market_id = get_market_id(storage);
+        event::emit_paused(val, market_id)
     }
 
     public fun set_supply_cap(_: &OwnerCap, storage: &mut Storage, asset: u8, supply_cap_ceiling: u256) {
@@ -274,6 +335,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.supply_cap_ceiling = supply_cap_ceiling;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"supply_cap_ceiling"), supply_cap_ceiling, market_id);
     }
 
     public fun set_borrow_cap(_: &OwnerCap, storage: &mut Storage, asset: u8, borrow_cap_ceiling: u256) {
@@ -282,6 +345,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.borrow_cap_ceiling = borrow_cap_ceiling;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"borrow_cap_ceiling"), borrow_cap_ceiling, market_id);
     }
 
     public fun set_ltv(_: &OwnerCap, storage: &mut Storage, asset: u8, ltv: u256) {
@@ -290,6 +355,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.ltv = ltv;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"ltv"), ltv, market_id);
     }
 
     public fun set_treasury_factor(_: &OwnerCap, storage: &mut Storage, asset: u8, treasury_factor: u256) {
@@ -297,7 +364,9 @@ module lending_core::storage {
         percentage_ray_validation(treasury_factor);
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
-        reserve.treasury_factor = treasury_factor
+        reserve.treasury_factor = treasury_factor;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"treasury_factor"), treasury_factor, market_id);
     }
 
     public fun set_base_rate(_: &OwnerCap, storage: &mut Storage, asset: u8, base_rate: u256) {
@@ -305,6 +374,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.borrow_rate_factors.base_rate = base_rate;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"base_rate"), base_rate, market_id);
     }
 
     public fun set_multiplier(_: &OwnerCap, storage: &mut Storage, asset: u8, multiplier: u256) {
@@ -312,6 +383,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.borrow_rate_factors.multiplier = multiplier;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"multiplier"), multiplier, market_id);
     }
 
     public fun set_jump_rate_multiplier(_: &OwnerCap, storage: &mut Storage, asset: u8, jump_rate_multiplier: u256) {
@@ -319,6 +392,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.borrow_rate_factors.jump_rate_multiplier = jump_rate_multiplier;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"jump_rate_multiplier"), jump_rate_multiplier, market_id);
     }
 
     public fun set_reserve_factor(_: &OwnerCap, storage: &mut Storage, asset: u8, reserve_factor: u256) {
@@ -327,6 +402,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.borrow_rate_factors.reserve_factor = reserve_factor;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"reserve_factor"), reserve_factor, market_id);
     }
 
     public fun set_optimal_utilization(_: &OwnerCap, storage: &mut Storage, asset: u8, optimal_utilization: u256) {
@@ -335,6 +412,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.borrow_rate_factors.optimal_utilization = optimal_utilization;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"optimal_utilization"), optimal_utilization, market_id);
     }
 
     public fun set_liquidation_ratio(_: &OwnerCap, storage: &mut Storage, asset: u8, liquidation_ratio: u256) {
@@ -343,6 +422,8 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.liquidation_factors.ratio = liquidation_ratio;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"liquidation_ratio"), liquidation_ratio, market_id);
     }
 
     public fun set_liquidation_bonus(_: &OwnerCap, storage: &mut Storage, asset: u8, liquidation_bonus: u256) {
@@ -351,6 +432,8 @@ module lending_core::storage {
         
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.liquidation_factors.bonus = liquidation_bonus;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"liquidation_bonus"), liquidation_bonus, market_id);
     }
 
     public fun set_liquidation_threshold(_: &OwnerCap, storage: &mut Storage, asset: u8, liquidation_threshold: u256) {
@@ -359,13 +442,14 @@ module lending_core::storage {
 
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
         reserve.liquidation_factors.threshold = liquidation_threshold;
+        let market_id = get_market_id(storage);
+        event::emit_storage_params_updated(asset, string(b"liquidation_threshold"), liquidation_threshold, market_id);
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     //                             The methods required to get value                            //
     //////////////////////////////////////////////////////////////////////////////////////////////
     public fun reserve_validation<CoinType>(storage: &Storage) {
-        // Title: Get the status of the pool. true: The pool is paused
         let name = type_name::into_string(type_name::get<CoinType>());
         let count = storage.reserves_count;
         let i = 0;
@@ -673,6 +757,9 @@ module lending_core::storage {
         system_state: &mut SuiSystemState,
         ctx: &mut TxContext
     ) {
+        version_verification(storage);
+        verify_market_storage_pool(storage, pool);
+        
         let coin_type = get_coin_type(storage, asset);
         assert!(coin_type == type_name::into_string(type_name::get<CoinType>()), error::invalid_coin_type());
 
@@ -684,7 +771,7 @@ module lending_core::storage {
 
         let scaled_treasury_value = reserve.treasury_balance;
         let treasury_value = ray_math::ray_mul(scaled_treasury_value, supply_index);
-        let withdrawable_value = lending_core::safe_math::min((withdraw_amount as u256), treasury_value); // get the smallest one value, which is the amount that can be withdrawn
+        let withdrawable_value = safe_math::min((withdraw_amount as u256), treasury_value); // get the smallest one value, which is the amount that can be withdrawn
 
         {
             // decrease treasury balance
@@ -705,16 +792,18 @@ module lending_core::storage {
         );
 
         let scaled_treasury_value_after_withdraw = get_treasury_balance(storage, asset);
-        emit(WithdrawTreasuryEvent {
-            sender: tx_context::sender(ctx),
-            recipient: recipient,
-            asset: asset,
-            amount: withdrawable_value,
-            poolId: object::uid_to_address(pool::uid(pool)),
-            before: scaled_treasury_value,
-            after: scaled_treasury_value_after_withdraw,
-            index: supply_index,
-        })
+        let market_id = get_market_id(storage);
+        event::emit_withdraw_treasury_event(
+            tx_context::sender(ctx),
+            recipient,
+            asset,
+            withdrawable_value,
+            object::uid_to_address(pool::uid(pool)),
+            scaled_treasury_value,
+            scaled_treasury_value_after_withdraw,
+            supply_index,
+            market_id
+        )
     }
 
     public fun destory_user(_: &StorageAdminCap, _storage: &mut Storage) {
@@ -737,6 +826,7 @@ module lending_core::storage {
     }
 
     public(friend) fun init_protected_liquidation_fields(storage: &mut Storage,  ctx: &mut TxContext) {
+        version_verification(storage);
         let designated_liquidators = table::new<address, Table<address, bool>>(ctx);
         let protected_liquidation_users = table::new<address, bool>(ctx);
         dynamic_field::add(&mut storage.id, DESIGNATED_LIQUIDATORS_KEY {}, designated_liquidators);
@@ -755,7 +845,9 @@ module lending_core::storage {
             table::add(user_designated_liquidators, user, is_designated);
         } else {
             *table::borrow_mut(user_designated_liquidators, user) = is_designated;
-        }
+        };
+        let market_id = get_market_id(storage);
+        event::emit_liquidator_set(liquidator, user, is_designated, market_id);
     }
 
     public(friend) fun set_protected_liquidation_users(storage: &mut Storage, user: address, is_protected: bool) {
@@ -765,7 +857,9 @@ module lending_core::storage {
             table::add(protected_liquidation_users, user, is_protected);
         } else {
             *table::borrow_mut(protected_liquidation_users, user) = is_protected;
-        }
+        };
+        let market_id = get_market_id(storage);
+        event::emit_protected_user_set(user, is_protected, market_id);
     }
 
     public fun is_liquidatable(storage: &mut Storage, liquidator: address, user: address): bool {
@@ -774,7 +868,7 @@ module lending_core::storage {
 
         if (!table::contains(protected_liquidation_users, user) || !*table::borrow(protected_liquidation_users, user)) { // liquidatable if not protected or protection is false
             return true
-        } else if (!table::contains(designated_liquidators, liquidator)) { // liquidatable if not designated
+        } else if (!table::contains(designated_liquidators, liquidator)) { // not liquidatable protected but no designated liquidator
             return false
         };
 
@@ -790,6 +884,327 @@ module lending_core::storage {
     public fun when_liquidatable(storage: &mut Storage, liquidator: address, user: address) {
         assert!(is_liquidatable(storage, liquidator, user), error::not_liquidatable());
     }
+
+    // ------------------ Emode related functions ------------------
+
+    struct EMODE_KEY has copy, drop, store {}
+
+    public fun init_emode_for_main_market(_: &StorageAdminCap, storage: &mut Storage,  ctx: &mut TxContext) {
+        init_emode_fields(storage, ctx);
+    }
+
+    fun init_emode_fields(storage: &mut Storage,  ctx: &mut TxContext) {
+        let emode = Emode {
+            emodes_pair: table::new<u64, EmodeConfig>(ctx),
+            user_emode_id: table::new<address, u64>(ctx),
+            next_emode_id: 0,
+        };
+        dynamic_field::add(&mut storage.id, EMODE_KEY {}, emode);
+    }
+
+    public(friend) fun create_emode_asset(asset: u8, is_collateral: bool, is_debt: bool, ltv: u256, lt: u256, liquidation_bonus: u256): EmodeAsset {
+        EmodeAsset {
+            assetId: asset,
+            isCollateral: is_collateral,
+            isDebt: is_debt,
+            ltv: ltv,
+            lt: lt,
+            liquidation_bonus: liquidation_bonus,
+        }
+    }
+
+    // add_emode(storage, emode_id, assetA params, assetB params)
+    public(friend) fun create_emode_pair( 
+        storage: &mut Storage, 
+        assetA: EmodeAsset, 
+        assetB: EmodeAsset
+    ) {
+        version_verification(storage);
+        // ensure assetA is before assetB
+        assert!(assetA.assetId < assetB.assetId, error::invalid_value());
+        percentage_ray_validation(assetA.ltv);
+        percentage_ray_validation(assetA.lt);
+        percentage_ray_validation(assetA.liquidation_bonus);
+        percentage_ray_validation(assetB.ltv);
+        percentage_ray_validation(assetB.lt);
+        percentage_ray_validation(assetB.liquidation_bonus);
+        
+        let emode: &mut Emode = dynamic_field::borrow_mut(&mut storage.id, EMODE_KEY {});
+        let emode_id = emode.next_emode_id;
+        let assetA_id = assetA.assetId;
+        let assetB_id = assetB.assetId;
+        let emode_config = EmodeConfig {
+            assetA: assetA,
+            assetB: assetB,
+            isActive: true
+        };
+        table::add(&mut emode.emodes_pair, emode_id, emode_config);
+        emode.next_emode_id = emode_id + 1;
+        let market_id = get_market_id(storage);
+        event::emit_emode_pair_created(emode_id, assetA_id, assetB_id, market_id);
+    }
+
+    public(friend) fun set_emode_config_active(storage: &mut Storage, emode_id: u64, is_active: bool) {
+        version_verification(storage);
+        let emode: &mut Emode = dynamic_field::borrow_mut(&mut storage.id, EMODE_KEY {});
+        let emode_config = table::borrow_mut(&mut emode.emodes_pair, emode_id);
+        emode_config.isActive = is_active;
+        let market_id = get_market_id(storage);
+        event::emit_emode_active_set(emode_id, is_active, market_id);
+    }
+
+    // set_emode_asset_lt(storage, emode_id, asset, lt)
+    public(friend) fun set_emode_asset_lt(storage: &mut Storage, emode_id: u64, asset: u8, lt: u256) {
+        version_verification(storage);
+        let emode_asset = get_emode_asset_mut(storage, emode_id, asset);
+        percentage_ray_validation(lt);
+        emode_asset.lt = lt;
+        let market_id = get_market_id(storage);
+        event::emit_emode_param_set(emode_id, asset, lt, string(b"lt"), market_id);
+    }
+    
+    // set_emode_asset_ltv(storage, emode_id, asset, ltv)
+    public(friend) fun set_emode_asset_ltv(storage: &mut Storage, emode_id: u64, asset: u8, ltv: u256) {
+        version_verification(storage);
+        let emode_asset = get_emode_asset_mut(storage, emode_id, asset);
+        percentage_ray_validation(ltv);
+        emode_asset.ltv = ltv;
+        let market_id = get_market_id(storage);
+        event::emit_emode_param_set(emode_id, asset, ltv, string(b"ltv"), market_id);
+    }
+    
+    // set_emode_asset_liquidation_bonus(storage, emode_id, asset, liquidation_bonus)
+    public(friend) fun set_emode_asset_liquidation_bonus(storage: &mut Storage, emode_id: u64, asset: u8, liquidation_bonus: u256) {
+        version_verification(storage);
+        let emode_asset = get_emode_asset_mut(storage, emode_id, asset);
+        percentage_ray_validation(liquidation_bonus);
+        emode_asset.liquidation_bonus = liquidation_bonus;
+        let market_id = get_market_id(storage);
+        event::emit_emode_param_set(emode_id, asset, liquidation_bonus, string(b"liquidation_bonus"), market_id);
+    }
+
+    public(friend) fun enter_emode(storage: &mut Storage, emode_id: u64, user: address) {
+        version_verification(storage);
+        when_not_paused(storage);
+        let emode: &mut Emode = dynamic_field::borrow_mut(&mut storage.id, EMODE_KEY {});
+        let emode_config = table::borrow(&emode.emodes_pair, emode_id);
+        assert!(emode_config.isActive, error::emode_is_not_active());
+        assert!(!table::contains(&emode.user_emode_id, user), error::duplicate_emode());
+        table::add(&mut emode.user_emode_id, user, emode_id);
+        let market_id = get_market_id(storage);
+        event::emit_emode_user_state_changed(user, emode_id, true, market_id);
+    }
+
+    public(friend) fun exit_emode(storage: &mut Storage, user: address) {
+        version_verification(storage);
+        when_not_paused(storage);
+        let emode: &mut Emode = dynamic_field::borrow_mut(&mut storage.id, EMODE_KEY {});
+        assert!(table::contains(&emode.user_emode_id, user), error::not_in_emode());
+        let emode_id = *table::borrow(&emode.user_emode_id, user);
+        table::remove(&mut emode.user_emode_id, user);
+        let market_id = get_market_id(storage);
+        event::emit_emode_user_state_changed(user, emode_id, false, market_id);
+    }
+
+    public fun verify_emode_support(storage: &Storage, user: address, asset_id: u8, check_is_collateral: bool, check_is_debt: bool) {
+        assert!(is_passed_emode_restrictions(storage, user, asset_id, check_is_collateral, check_is_debt), error::ineligible_for_emode());
+    }
+
+    public fun is_passed_emode_restrictions(storage: &Storage, user: address, asset_id: u8, check_is_collateral: bool, check_is_debt: bool): bool {
+        let emode: &Emode = dynamic_field::borrow(&storage.id, EMODE_KEY {});
+        // pass if user is not in emode
+        if (!table::contains(&emode.user_emode_id, user)) {
+            return true
+        };
+
+        let emode_id = *table::borrow(&emode.user_emode_id, user);
+        // this function also ensures that the asset is in the emode
+        let emode_asset = get_emode_asset(storage, emode_id, asset_id);
+
+        if (check_is_collateral && !emode_asset.isCollateral) {
+            return false
+        };
+
+        if (check_is_debt && !emode_asset.isDebt) {
+            return false
+        };
+
+        true
+    }
+
+    public fun is_in_emode(storage: &Storage, user: address): bool {
+        let emode: &Emode = dynamic_field::borrow(&storage.id, EMODE_KEY {});
+        table::contains(&emode.user_emode_id, user)
+    }
+
+    public fun get_user_emode_id(storage: &Storage, user: address): u64 {
+        let emode: &Emode = dynamic_field::borrow(&storage.id, EMODE_KEY {});
+        *table::borrow(&emode.user_emode_id, user)
+    }
+
+
+    // return (ltvA, ltA, liquidation_bonusA, isCollateralA, isDebtA, ltvB, ltB, liquidation_bonusB, isCollateralB, isDebtB, isActive)
+    public fun get_emode_info(storage: &Storage, emode_id: u64): (u256, u256, u256, bool, bool, u256, u256, u256, bool, bool, bool) {
+        let emode: &Emode = dynamic_field::borrow(&storage.id, EMODE_KEY {});
+        let emode_config = table::borrow(&emode.emodes_pair, emode_id);
+        (
+            emode_config.assetA.ltv, 
+            emode_config.assetA.lt, 
+            emode_config.assetA.liquidation_bonus, 
+            emode_config.assetA.isCollateral, 
+            emode_config.assetA.isDebt, 
+            emode_config.assetB.ltv, 
+            emode_config.assetB.lt, 
+            emode_config.assetB.liquidation_bonus, 
+            emode_config.assetB.isCollateral, 
+            emode_config.assetB.isDebt, 
+            emode_config.isActive
+        )
+    }
+
+    // return (ltv, lt, liquidation_bonus)
+    public fun get_emode_asset_info(storage: &Storage, emode_id: u64, asset: u8): (u256, u256, u256) {
+        let emode_asset = get_emode_asset(storage, emode_id, asset);
+        (emode_asset.ltv, emode_asset.lt, emode_asset.liquidation_bonus)
+    }
+
+    fun get_emode_asset(storage: &Storage, emode_id: u64, asset: u8): &EmodeAsset {
+        let emode: &Emode = dynamic_field::borrow(&storage.id, EMODE_KEY {});
+        let emode_config = table::borrow(&emode.emodes_pair, emode_id);
+        if (emode_config.assetA.assetId == asset) {
+            &emode_config.assetA
+        } else if (emode_config.assetB.assetId == asset) {
+            &emode_config.assetB
+        } else {
+            abort error::not_in_emode()
+        }
+    }
+
+    fun get_emode_asset_mut(storage: &mut Storage, emode_id: u64, asset: u8): &mut EmodeAsset {
+        let emode: &mut Emode = dynamic_field::borrow_mut(&mut storage.id, EMODE_KEY {});
+        let emode_config = table::borrow_mut(&mut emode.emodes_pair, emode_id);
+        if (emode_config.assetA.assetId == asset) {
+            &mut emode_config.assetA
+        } else if (emode_config.assetB.assetId == asset) {
+            &mut emode_config.assetB
+        } else {
+            abort error::not_in_emode()
+        }
+    }
+
+
+    // ------------------ Multiple markets related functions ------------------
+
+    struct MARKET_KEY has copy, drop, store {}
+
+    public fun init_for_main_market(_: &StorageAdminCap, storage: &mut Storage) {
+        init_main_market(storage);
+    }
+
+    // only current main market needs to be initialized
+    // other markets will be initialized when creating reserves
+    fun init_main_market(storage: &mut Storage) {
+        assert!(!dynamic_field::exists_(&storage.id, MARKET_KEY {}), error::invalid_function_call());
+        let market_info = MarketInfo {
+            market_id: 0,
+            last_market_id: 0,
+            is_main_market: true
+        };
+        dynamic_field::add(&mut storage.id, MARKET_KEY {}, market_info);
+    }
+
+    public(friend) fun create_new_market(main_storage: &mut Storage, ctx: &mut TxContext) {
+        version_verification(main_storage);
+        let main_market_info: &mut MarketInfo = dynamic_field::borrow_mut(&mut main_storage.id, MARKET_KEY {});
+        assert!(main_market_info.is_main_market, error::invalid_function_call());
+
+        let storage = Storage {
+            id: object::new(ctx),
+            version: version::this_version(),
+            paused: false,
+            reserves: table::new<u8, ReserveData>(ctx),
+            reserves_count: 0,
+            users: vector::empty<address>(),
+            user_info: table::new<address, UserInfo>(ctx),
+        };
+
+        init_protected_liquidation_fields(&mut storage, ctx);
+        init_emode_fields(&mut storage, ctx);
+        init_borrow_weight_fields(&mut storage, ctx);
+
+        let market_info = MarketInfo {
+            market_id: main_market_info.last_market_id + 1, // the market id is the id of the market
+            last_market_id: 0, // this field is not used for non-main market
+            is_main_market: false
+        };
+        let new_market_id = market_info.market_id;
+        dynamic_field::add(&mut storage.id, MARKET_KEY {}, market_info);
+
+        transfer::share_object(storage);
+        event::emit_market_created(new_market_id);
+        main_market_info.last_market_id = main_market_info.last_market_id + 1;
+    }
+
+    public fun get_market_id(storage: &Storage): u64 {
+        dynamic_field::borrow<MARKET_KEY, MarketInfo>(&storage.id, MARKET_KEY {}).market_id
+    }
+
+    // return (market_id, last_market_id, is_main_market)
+    public fun get_storage_market_info(storage: &Storage): (u64, u64, bool) {
+        let market_info: &MarketInfo = dynamic_field::borrow(&storage.id, MARKET_KEY {});
+        (market_info.market_id, market_info.last_market_id, market_info.is_main_market)
+    }
+
+    public fun verify_market_storage_pool<CoinType>(storage: &Storage, pool: &Pool<CoinType>) {
+        assert!(get_market_id(storage) == pool::get_market_id(pool), error::unmatched_market_id());
+    }
+
+    // ------------------ Borrow Weight related functions ------------------
+
+    struct BORROW_WEIGHT_KEY has copy, drop, store {}
+
+    public fun init_borrow_weight_for_main_market(_: &StorageAdminCap, storage: &mut Storage, ctx: &mut TxContext) {
+        init_borrow_weight_fields(storage, ctx);
+    }
+
+    fun init_borrow_weight_fields(storage: &mut Storage, ctx: &mut TxContext) {
+        let borrow_weight = table::new<u8, u64>(ctx);
+        dynamic_field::add(&mut storage.id, BORROW_WEIGHT_KEY {}, borrow_weight);
+    }
+
+    // denominator: 10000
+    public(friend) fun set_borrow_weight(storage: &mut Storage, asset: u8, weight: u64) {
+        version_verification(storage);
+        assert!(weight <= 10 * constants::percentage_benchmark(), error::invalid_value()); // max 1000%
+        assert!(weight >= constants::percentage_benchmark(), error::invalid_value()); // min 100%
+        let borrow_weight = dynamic_field::borrow_mut(&mut storage.id, BORROW_WEIGHT_KEY {});
+        if (!table::contains(borrow_weight, asset)) {
+            table::add(borrow_weight, asset, weight);
+        } else {
+            *table::borrow_mut(borrow_weight, asset) = weight;
+        };
+        let market_id = get_market_id(storage);
+        event::emit_borrow_weight_set(asset, weight, market_id);
+    }
+
+    public(friend) fun remove_borrow_weight(storage: &mut Storage, asset: u8) {
+        version_verification(storage);
+        let borrow_weight = dynamic_field::borrow_mut(&mut storage.id, BORROW_WEIGHT_KEY {});
+        table::remove<u8, u64>(borrow_weight, asset);
+        let market_id = get_market_id(storage);
+        event::emit_borrow_weight_removed(asset, market_id);
+    }
+
+    public fun get_borrow_weight(storage: &Storage, asset: u8): u64 {
+        let borrow_weight = dynamic_field::borrow(&storage.id, BORROW_WEIGHT_KEY {});
+        if (table::contains(borrow_weight, asset)) {
+            *table::borrow(borrow_weight, asset)
+        } else {
+            constants::percentage_benchmark()
+        }
+    }
+
+
 
     //////////////////////////////////////////////////////////////////////////////////////////////
     //                           The methods required for unit testing                          //
@@ -928,7 +1343,7 @@ module lending_core::storage {
         table::add(&mut storage.reserves, current_idx, reserve_data);
         storage.reserves_count = current_idx + 1;
 
-        pool::create_pool<CoinType>(pool_admin_cap, decimals, ctx);
+        pool::create_pool_with_market_id<CoinType>(pool_admin_cap, decimals, 0, ctx);
     }
 
     #[test_only]
@@ -1004,6 +1419,8 @@ module lending_core::storage {
         )
     }
 
+    // legacy: should be test only, but it's already public in the old version
+    // #[test_only]
     public fun get_reserve_for_testing(storage: &Storage, asset: u8): (&ReserveData) {
         table::borrow(&storage.reserves, asset)
     }
@@ -1026,5 +1443,10 @@ module lending_core::storage {
     #[test_only]
     public fun increase_total_supply_balance_for_testing(storage: &mut Storage, asset: u8, amount: u256) {
         increase_total_supply_balance(storage, asset, amount);
+    }
+
+    #[test_only]
+    public fun create_emode_asset_for_testing(asset: u8, is_collateral: bool, is_debt: bool, ltv: u256, lt: u256, liquidation_bonus: u256): EmodeAsset {
+        create_emode_asset(asset, is_collateral, is_debt, ltv, lt, liquidation_bonus)
     }
 }

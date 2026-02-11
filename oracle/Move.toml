@@ -11,3 +11,6 @@ rev = "main"
 git = "https://github.com/naviprotocol/pyth-crosschain.git"
 subdir = "target_chains/sui/contracts"
 rev = "navi-forked"
+
+[dependencies.switchboard]
+local = "../switchboard_sui/on_demand"

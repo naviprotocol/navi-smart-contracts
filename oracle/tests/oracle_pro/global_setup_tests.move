@@ -173,6 +173,13 @@ module oracle::oracle_global {
                 feed_id,
                 0, 
                 true);
+            
+            oracle_manage::create_switchboard_oracle_provider_config(
+                &oracle_admin_cap,
+                &mut oracle_config,
+                feed_id,
+                pair_id, 
+                true);
 
             config::new_oracle_provider_config_for_testing(&mut oracle_config, feed_id, test_provider(), b"0", true);
 

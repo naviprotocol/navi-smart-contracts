@@ -1,5 +1,8 @@
 #[lint_allow(self_transfer)]
-#[allow(unused_use)]
+#[allow(unused_use, lint(public_entry))]
+// Deprecated: `incentive_v2` is kept for upgrade compatibility only.
+// It no longer distributes rewards, and no new reward features will be added here.
+// All reward functionality is implemented in `lending_core::incentive_v3`.
 module lending_core::incentive_v2 {
     use std::vector::{Self};
     use std::type_name::{Self, TypeName};

@@ -124,6 +124,26 @@ module oracle::oracle_manage {
         config::set_oracle_provider_config_enable(oracle_config, feed_id, oracle_provider::supra_provider(), false)
     }
 
+    public fun create_switchboard_oracle_provider_config(_: &OracleAdminCap, oracle_config: &mut OracleConfig, feed_id: address, pair_id: vector<u8>, enable: bool) {
+        config::version_verification(oracle_config);
+        config::new_oracle_provider_config(oracle_config, feed_id, oracle_provider::switchboard_provider(), pair_id, enable)
+    }
+
+    public fun set_switchboard_price_source_pair_id(_: &OracleAdminCap, oracle_config: &mut OracleConfig, feed_id: address, pair_id: vector<u8>) {
+        config::version_verification(oracle_config);
+        config::set_oracle_provider_config_pair_id(oracle_config, feed_id, oracle_provider::switchboard_provider(), pair_id)
+    }
+
+    public fun enable_switchboard_oracle_provider(_: &OracleAdminCap, oracle_config: &mut OracleConfig, feed_id: address) {
+        config::version_verification(oracle_config);
+        config::set_oracle_provider_config_enable(oracle_config, feed_id, oracle_provider::switchboard_provider(), true)
+    }
+
+    public fun disable_switchboard_oracle_provider(_: &OracleAdminCap, oracle_config: &mut OracleConfig, feed_id: address) {
+        config::version_verification(oracle_config);
+        config::set_oracle_provider_config_enable(oracle_config, feed_id, oracle_provider::switchboard_provider(), false)
+    }
+
     public fun set_primary_oracle_provider(_: &OracleAdminCap, cfg: &mut OracleConfig, feed_id: address, provider: OracleProvider) {
         config::version_verification(cfg);
         config::set_primary_oracle_provider(cfg, feed_id, provider)

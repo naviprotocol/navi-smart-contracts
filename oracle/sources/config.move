@@ -226,6 +226,9 @@ module oracle::config {
         ctx: &mut TxContext,
     ) {
         assert!(!is_price_feed_exists<CoinType>(cfg, oracle_id), error::price_feed_already_exists());
+        if (maximum_effective_price > 0) {
+            assert!(minimum_effective_price <= maximum_effective_price, error::invalid_value());
+        };
 
         let uid = object::new(ctx);
         let object_address = object::uid_to_address(&uid);
