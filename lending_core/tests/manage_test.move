@@ -13,6 +13,7 @@ module lending_core::manage_test {
     use lending_core::base;
     use lending_core::lending;
     use lending_core::manage;
+    use lending_core::ray_math;
     use lending_core::base_lending_tests;
     use lending_core::pool::{Self, Pool};
     use lending_core::sui_test::{Self, SUI_TEST};
@@ -425,11 +426,11 @@ module lending_core::manage_test {
             let d = std::string::utf8(b"test_flash_loan_should_correctly_with_larger_rate");
             std::debug::print(&d);
             let (total_supply, _) = storage::get_total_supply(&mut storage, SUI_ASSET_ID);
-            let actual_amount = math::ray_math::ray_div((expect_supply_fee as u256), _before_supply_index);// 2999700000000 / 1000004800000000000000000000 = 2999685601509
+            let actual_amount = ray_math::ray_div((expect_supply_fee as u256), _before_supply_index);// 2999700000000 / 1000004800000000000000000000 = 2999685601509
             print(&actual_amount);
             print(&total_supply);//1e15
             print(&_before_supply_index);// 1000004800000000000000000000
-            let expect_supply_index_diff = math::ray_math::ray_mul(math::ray_math::ray_div(actual_amount, total_supply), _before_supply_index);//2999.7 * 1e21
+            let expect_supply_index_diff = ray_math::ray_mul(ray_math::ray_div(actual_amount, total_supply), _before_supply_index);//2999.7 * 1e21
             print(&expect_supply_index_diff);// 2999699999999887243200000
 
             assert!(expect_supply_index_diff == actual_supply_index_diff, 0);
@@ -873,12 +874,12 @@ module lending_core::manage_test {
             std::debug::print(&d);
             print(&supply_index); // 1000009449999999998177500000
             let (total_supply, _) = storage::get_total_supply(&mut storage, USDT_ASSET_ID);
-            let actual_amount = math::ray_math::ray_div((900000000 as u256), _before_supply_index);
+            let actual_amount = ray_math::ray_div((900000000 as u256), _before_supply_index);
             print(&actual_amount); // 899999595
             print(&total_supply); // 1e14
             print(&_before_supply_index); // 1000000450000000000000000000
             print(&supply_diff_on_first_flash_loan_usdt); // 450000000000000000000
-            let expect_supply_index_diff = math::ray_math::ray_mul(math::ray_math::ray_div(actual_amount, total_supply), _before_supply_index);
+            let expect_supply_index_diff = ray_math::ray_mul(ray_math::ray_div(actual_amount, total_supply), _before_supply_index);
             print(&expect_supply_index_diff);// 8999999999998177500000
 
             assert!(supply_diff_on_second_flash_loan_usdt == expect_supply_index_diff, 0);

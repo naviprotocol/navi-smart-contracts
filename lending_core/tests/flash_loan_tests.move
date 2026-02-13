@@ -1347,7 +1347,9 @@ module lending_core::flash_loan_test {
         test_scenario::next_tx(&mut scenario, OWNER); 
         {
             let storage_admin_cap = test_scenario::take_from_sender<StorageAdminCap>(&mut scenario);
-            manage::create_flash_loan_config(&storage_admin_cap, test_scenario::ctx(&mut scenario));
+            let storage = test_scenario::take_shared<Storage>(&mut scenario);
+            manage::create_flash_loan_config_with_storage(&storage_admin_cap, &storage, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(storage);
             test_scenario::return_to_sender(&scenario, storage_admin_cap);
         };
 
@@ -1473,7 +1475,9 @@ module lending_core::flash_loan_test {
         test_scenario::next_tx(&mut scenario, OWNER); 
         {
             let storage_admin_cap = test_scenario::take_from_sender<StorageAdminCap>(&mut scenario);
-            manage::create_flash_loan_config(&storage_admin_cap, test_scenario::ctx(&mut scenario));
+            let storage = test_scenario::take_shared<Storage>(&mut scenario);
+            manage::create_flash_loan_config_with_storage(&storage_admin_cap, &storage, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(storage);
             test_scenario::return_to_sender(&scenario, storage_admin_cap);
         };
 
@@ -1553,7 +1557,9 @@ module lending_core::flash_loan_test {
         test_scenario::next_tx(&mut scenario, OWNER); 
         {
             let storage_admin_cap = test_scenario::take_from_sender<StorageAdminCap>(&mut scenario);
-            manage::create_flash_loan_config(&storage_admin_cap, test_scenario::ctx(&mut scenario));
+            let storage = test_scenario::take_shared<Storage>(&mut scenario);
+            manage::create_flash_loan_config_with_storage(&storage_admin_cap, &storage, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(storage);
             test_scenario::return_to_sender(&scenario, storage_admin_cap);
         };
 

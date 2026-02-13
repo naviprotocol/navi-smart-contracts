@@ -1257,7 +1257,7 @@ module lending_core::lending_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 46000, location=utils::utils)]
+    #[expected_failure(abort_code = 46000, location=lending_core::utils)]
     public fun test_deposit_on_behalf_of_user_should_successfully_deposit_more_than_zero() {
         let scenario = test_scenario::begin(OWNER);
         let user_a_scenario = test_scenario::begin(UserA);
@@ -1314,7 +1314,7 @@ module lending_core::lending_tests {
     }
 
     #[test]
-    #[expected_failure(abort_code = 46000, location=utils::utils)]
+    #[expected_failure(abort_code = 46000, location=lending_core::utils)]
     public fun test_repay_on_behalf_of_user_should_successfully_repay_more_than_zero() {
         let scenario = test_scenario::begin(OWNER);
         let user_a_scenario = test_scenario::begin(UserA);

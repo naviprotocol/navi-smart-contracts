@@ -66,9 +66,11 @@ module lending_core::base {
         test_scenario::next_tx(scenario, owner);
         {
             let storage_admin_cap = test_scenario::take_from_sender<StorageAdminCap>(scenario);
+            let storage = test_scenario::take_shared<Storage>(scenario);
 
-            manage::create_flash_loan_config(&storage_admin_cap, test_scenario::ctx(scenario));
+            manage::create_flash_loan_config_with_storage(&storage_admin_cap, &storage, test_scenario::ctx(scenario));
 
+            test_scenario::return_shared(storage);
             test_scenario::return_to_sender(scenario, storage_admin_cap);
         };
 

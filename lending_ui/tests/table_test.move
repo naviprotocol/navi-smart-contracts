@@ -1,5 +1,5 @@
 module lending_ui::table_test {
-    use math::ray_math;
+    use lending_core::ray_math;
     // #[test]
     // public fun test_table() {
     //     let sender = @0x0;
