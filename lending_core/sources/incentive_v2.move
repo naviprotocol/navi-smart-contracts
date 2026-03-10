@@ -870,6 +870,23 @@ module lending_core::incentive_v2 {
         abort 0
     }
 
+    /// Create and share an IncentiveV2 object for testing without requiring
+    /// an OwnerCap. This allows external integrators to set up test scenarios
+    /// that include IncentiveV2 as a parameter without bootstrapping the full
+    /// protocol admin flow.
+    #[test_only]
+    public fun init_for_testing(ctx: &mut TxContext) {
+        let incentive = Incentive {
+            id: object::new(ctx),
+            version: 0,
+            pool_objs: vector::empty<address>(),
+            inactive_objs: vector::empty<address>(),
+            pools: table::new<address, IncentivePool>(ctx),
+            funds: table::new<address, IncentiveFundsPoolInfo>(ctx),
+        };
+        transfer::share_object(incentive);
+    }
+
     #[test_only]
     public fun create_next_version_incentive_for_testing(_: &OwnerCap, ctx: &mut TxContext) {
         let new_id = object::new(ctx);
