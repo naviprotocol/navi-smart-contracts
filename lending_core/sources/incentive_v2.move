@@ -878,7 +878,7 @@ module lending_core::incentive_v2 {
     public fun init_for_testing(ctx: &mut TxContext) {
         let incentive = Incentive {
             id: object::new(ctx),
-            version: 0,
+            version: version::this_version(),
             pool_objs: vector::empty<address>(),
             inactive_objs: vector::empty<address>(),
             pools: table::new<address, IncentivePool>(ctx),
