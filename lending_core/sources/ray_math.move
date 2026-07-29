@@ -15,7 +15,7 @@ module lending_core::ray_math {
     const RAY_MATH_MULTIPLICATION_OVERFLOW: u64 = 1101;
     const RAY_MATH_ADDITION_OVERFLOW: u64 = 1102;
     const RAY_MATH_DIVISION_BY_ZERO: u64 = 1103;
-
+    
 
     // return: ray, 1e27 -> 1000000000000000000000000000
     public fun ray(): u256 {

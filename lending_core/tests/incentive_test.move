@@ -2,14 +2,14 @@
 module lending_core::incentive_tests {
     use std::vector;
     use sui::clock;
-    use sui::coin::{Self};
+    use sui::coin::{Self, Coin};
     use sui::balance::{Self};
     use sui::transfer::{Self};
     use sui::test_scenario::{Self};
 
     use lending_core::ray_math;
     use lending_core::global;
-    use lending_core::storage::{Storage};
+    use lending_core::storage::{Storage, OwnerCap as StorageOwnerCap};
     use lending_core::lending::{Self};
     use lending_core::incentive::{Self, Incentive, IncentiveBal};
     use lending_core::pool::{Pool};
@@ -178,6 +178,107 @@ module lending_core::incentive_tests {
             test_scenario::return_shared(stg);
             test_scenario::return_shared(i);
             test_scenario::return_shared(b);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    public fun test_admin_withdraw_incentive_bal() {
+        let recipient = @0xC0FFEE;
+
+        let scenario = test_scenario::begin(OWNER);
+        {
+            global::init_protocol(&mut scenario);
+        };
+
+        test_scenario::next_tx(&mut scenario, OWNER);
+        {
+            let i = test_scenario::take_shared<Incentive>(&scenario);
+
+            let ctx = test_scenario::ctx(&mut scenario);
+            let coin = coin::mint_for_testing<BTC_TEST>(100, ctx);
+            let clock = clock::create_for_testing(ctx);
+
+            incentive::add_pool<BTC_TEST>(&mut i, &clock, 0, 1, 2, coin, 100, 0, ctx);
+
+            clock::destroy_for_testing(clock);
+            test_scenario::return_shared(i);
+        };
+
+        test_scenario::next_tx(&mut scenario, OWNER);
+        {
+            let owner_cap = test_scenario::take_from_sender<StorageOwnerCap>(&scenario);
+            let stg = test_scenario::take_shared<Storage>(&scenario);
+
+            let b = test_scenario::take_shared<IncentiveBal<BTC_TEST>>(&scenario);
+
+            let ctx = test_scenario::ctx(&mut scenario);
+            incentive::admin_withdraw_incentive_bal<BTC_TEST>(&owner_cap, &stg, &mut b, recipient, ctx);
+            test_scenario::return_shared(stg);
+            test_scenario::return_to_sender(&scenario, owner_cap);
+            test_scenario::return_shared(b);
+        };
+
+        test_scenario::next_tx(&mut scenario, recipient);
+        {
+            let withdrawn = test_scenario::take_from_sender<Coin<BTC_TEST>>(&scenario);
+            assert!(coin::value(&withdrawn) == 100, 0);
+            test_scenario::return_to_sender(&scenario, withdrawn);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    #[test]
+    public fun test_admin_withdraw_incentive_bal_twice_second_is_zero() {
+        let recipient = @0xC0FFEE;
+
+        let scenario = test_scenario::begin(OWNER);
+        {
+            global::init_protocol(&mut scenario);
+        };
+
+        test_scenario::next_tx(&mut scenario, OWNER);
+        {
+            let i = test_scenario::take_shared<Incentive>(&scenario);
+
+            let ctx = test_scenario::ctx(&mut scenario);
+            let coin = coin::mint_for_testing<BTC_TEST>(100, ctx);
+            let clock = clock::create_for_testing(ctx);
+
+            incentive::add_pool<BTC_TEST>(&mut i, &clock, 0, 1, 2, coin, 100, 0, ctx);
+
+            clock::destroy_for_testing(clock);
+            test_scenario::return_shared(i);
+        };
+
+        test_scenario::next_tx(&mut scenario, OWNER);
+        {
+            let owner_cap = test_scenario::take_from_sender<StorageOwnerCap>(&scenario);
+            let b = test_scenario::take_shared<IncentiveBal<BTC_TEST>>(&scenario);
+            let stg = test_scenario::take_shared<Storage>(&scenario);
+
+            let ctx = test_scenario::ctx(&mut scenario);
+            incentive::admin_withdraw_incentive_bal<BTC_TEST>(&owner_cap, &stg, &mut b, recipient, ctx);
+            // Second withdraw drains zero — should still succeed and emit a zero-value coin
+            incentive::admin_withdraw_incentive_bal<BTC_TEST>(&owner_cap, &stg, &mut b, recipient, ctx);
+
+            test_scenario::return_shared(stg);
+            test_scenario::return_to_sender(&scenario, owner_cap);
+            test_scenario::return_shared(b);
+        };
+
+        test_scenario::next_tx(&mut scenario, recipient);
+        {
+            let a = test_scenario::take_from_sender<Coin<BTC_TEST>>(&scenario);
+            let b = test_scenario::take_from_sender<Coin<BTC_TEST>>(&scenario);
+            // take order isn't guaranteed; check the multiset
+            let va = coin::value(&a);
+            let vb = coin::value(&b);
+            assert!((va == 100 && vb == 0) || (va == 0 && vb == 100), 0);
+            test_scenario::return_to_sender(&scenario, a);
+            test_scenario::return_to_sender(&scenario, b);
         };
 
         test_scenario::end(scenario);

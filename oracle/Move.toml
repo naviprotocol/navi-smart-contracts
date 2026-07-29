@@ -12,5 +12,11 @@ git = "https://github.com/naviprotocol/pyth-crosschain.git"
 subdir = "target_chains/sui/contracts"
 rev = "navi-forked"
 
+[dependencies.pyth_pro_compatible]
+git = "https://github.com/pyth-network/pyth-crosschain.git"
+subdir = "target_chains/sui/contracts"
+rev = "sui-pro-compatible-contract-mainnet"
+rename-from = "pyth"
+
 [dependencies.switchboard]
 local = "../switchboard_sui/on_demand"

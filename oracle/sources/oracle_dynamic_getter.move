@@ -9,11 +9,19 @@ module oracle::oracle_dynamic_getter {
     use oracle::oracle_pro::{Self};
     use SupraOracle::SupraSValueFeed::{OracleHolder};
     use pyth::price_info::{PriceInfoObject};
+    use pyth_pro_compatible::price_info::{PriceInfoObject as ProPriceInfoObject};
+    use switchboard::aggregator::{Aggregator};
+
+    // Deprecated: legacy Pyth deployment is retired after the Pyth Core upgrade (2026-07-31)
+    #[allow(unused_variable)]
+    public fun get_dynamic_single_price(clock: &Clock, oracle_config: &OracleConfig, price_oracle: &PriceOracle, supra_oracle_holder: &OracleHolder, pyth_price_info: &PriceInfoObject, feed_address: address): (u64, u256) {
+        abort 0
+    }
 
     /// a dynamic function to fetch a latest price without actually updating the price
     /// return (result, price)
     #[allow(unused_assignment)]
-    public fun get_dynamic_single_price(clock: &Clock, oracle_config: &OracleConfig, price_oracle: &PriceOracle, supra_oracle_holder: &OracleHolder, pyth_price_info: &PriceInfoObject, feed_address: address): (u64, u256) {
+    public fun get_dynamic_single_price_v2(clock: &Clock, oracle_config: &OracleConfig, price_oracle: &PriceOracle, supra_oracle_holder: &OracleHolder, pyth_price_info: &ProPriceInfoObject, switchboard_aggregator: &Aggregator, feed_address: address): (u64, u256) {
         config::version_verification(oracle_config);
         if(config::is_paused(oracle_config)) {
             return (error::paused(), 0)
@@ -43,7 +51,7 @@ module oracle::oracle_dynamic_getter {
             // the administrator should shut it down before reaching here. No event or error is required at this time, it was confirmed by the administrator
             return (error::oracle_provider_disabled(), 0)
         };
-        let (primary_price, primary_updated_time) = oracle_pro::get_price_from_adaptor(primary_oracle_provider_config, decimal, supra_oracle_holder, pyth_price_info);
+        let (primary_price, primary_updated_time) = oracle_pro::get_price_from_adaptor_v3(primary_oracle_provider_config, decimal, supra_oracle_holder, pyth_price_info, switchboard_aggregator);
         let is_primary_price_fresh = strategy::is_oracle_price_fresh(current_timestamp, primary_updated_time, max_timestamp_diff);
 
         // retrieve secondary price and status
@@ -53,7 +61,7 @@ module oracle::oracle_dynamic_getter {
         let secondary_updated_time = 0;
         if (is_secondary_oracle_available) {
             let secondary_source_config = config::get_secondary_source_config(price_feed);
-            (secondary_price, secondary_updated_time) = oracle_pro::get_price_from_adaptor(secondary_source_config, decimal, supra_oracle_holder, pyth_price_info);
+            (secondary_price, secondary_updated_time) = oracle_pro::get_price_from_adaptor_v3(secondary_source_config, decimal, supra_oracle_holder, pyth_price_info, switchboard_aggregator);
             is_secondary_price_fresh = strategy::is_oracle_price_fresh(current_timestamp, secondary_updated_time, max_timestamp_diff);
         };
 
