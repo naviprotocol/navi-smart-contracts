@@ -7,19 +7,41 @@ Core Move packages for the NAVI Protocol, including the on-chain modules that po
 mvr add @navi-protocol/lending --network mainnet
 ```
 
-# 📦 Build the package
+# 📦 Build and test a package
 
 ```bash
-sui move build -p `pwd`/${PackageDir}
+sui move build -p ${PackageDir}
+sui move test  -p ${PackageDir}
 ```
 
-# ⚡ Publish Move modules
+# ⚡ Publish and upgrade
+
+These packages use Move's current package format: on-chain addresses live in each package's
+`Published.toml` (keyed by environment) rather than in `Move.toml`, and dependency revisions are
+pinned in `Move.lock`. A successful `publish` or `upgrade` writes the resulting package ID and
+version back into `Published.toml`, so that file should be committed afterwards.
 
 ```bash
-sui client publish --gas-budget 100000000 ${PackageDir}
-sui client publish --gas-budget 100000000 --skip-dependency-verification ${PackageDir}
-sui client upgrade --gas-budget 100000000 --upgrade-capability ${upgradeCap}
+# first publication of a package
+sui client publish ${PackageDir}
+
+# subsequent upgrades
+sui client upgrade -c ${UpgradeCapId} ${PackageDir}
+
+# preview without submitting
+sui client upgrade -c ${UpgradeCapId} --dry-run ${PackageDir}
 ```
+
+`--gas-budget` is optional; without it the CLI estimates the budget from a dry run.
+
+Two flags matter for these packages:
+
+- `--with-unpublished-dependencies` publishes local dependencies that have no on-chain address
+  yet, folding their modules into the package being published. `lending_core` v26 was released
+  this way — see the verification note below.
+- `--skip-dependency-verification` skips the check that each dependency's source compiles to its
+  on-chain bytecode. It makes publishing faster but removes a real safety check, so use it only
+  when the failure is understood.
 
 # 🆘 Bug Bounty Program
 https://hackenproof.com/companies/navi-protocol
