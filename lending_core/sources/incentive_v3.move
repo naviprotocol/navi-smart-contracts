@@ -1,6 +1,10 @@
 /// The `incentive_v3` module manages the incentive structures for the lending protocol.
 /// It includes functionality for creating and managing incentives, pools, and rules,
 /// as well as handling reward distribution and borrow fee management.
+///
+/// Reward accounting for every user action is settled here through
+/// `update_reward_state_by_asset`, which supersedes the `incentive_v2` settlement path.
+/// The `incentive_v2` module is kept only so that already-accrued v2 rewards remain claimable.
 #[allow(unused_variable, lint(public_entry))]
 module lending_core::incentive_v3 {
     use std::vector::{Self};
@@ -899,7 +903,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         lending::deposit_coin<CoinType>(clock, storage, pool, asset, deposit_coin, amount, ctx);
@@ -916,7 +919,6 @@ module lending_core::incentive_v3 {
         account_cap: &AccountCap
     ) {
         let owner = account::account_owner(account_cap);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
 
         lending::deposit_with_account_cap<CoinType>(clock, storage, pool, asset, deposit_coin, account_cap);
@@ -934,7 +936,6 @@ module lending_core::incentive_v3 {
         incentive_v3: &mut Incentive,
         ctx: &mut TxContext
     ) {
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         lending::deposit_on_behalf_of_user<CoinType>(clock, storage, pool, asset, user, deposit_coin, amount, ctx);
@@ -953,7 +954,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let _balance = lending::withdraw_coin<CoinType>(clock, oracle, storage, pool, asset, amount, ctx);
@@ -975,7 +975,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let _balance = lending::withdraw_coin_v2<CoinType>(clock, oracle, storage, pool, asset, amount, system_state, ctx);
@@ -996,7 +995,6 @@ module lending_core::incentive_v3 {
         account_cap: &AccountCap
     ): Balance<CoinType> {
         let owner = account::account_owner(account_cap);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
 
         lending::withdraw_with_account_cap<CoinType>(clock, oracle, storage, pool, asset, amount, account_cap)
@@ -1017,7 +1015,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ): Balance<CoinType> {
         let owner = account::account_owner(account_cap);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
 
         lending::withdraw_with_account_cap_v2<CoinType>(clock, oracle, storage, pool, asset, amount, account_cap, system_state, ctx)
@@ -1036,7 +1033,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ): Balance<CoinType> {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let _balance = lending::withdraw_coin<CoinType>(clock, oracle, storage, pool, asset, amount, ctx);
@@ -1057,7 +1053,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ): Balance<CoinType> {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let _balance = lending::withdraw_coin_v2<CoinType>(clock, oracle, storage, pool, asset, amount, system_state, ctx);
@@ -1108,7 +1103,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
@@ -1135,7 +1129,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
@@ -1161,7 +1154,6 @@ module lending_core::incentive_v3 {
         account_cap: &AccountCap
     ): Balance<CoinType> {
         let owner = account::account_owner(account_cap);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
 
         let fee = get_borrow_fee_v2(incentive_v3, owner, asset, amount);
@@ -1188,7 +1180,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ): Balance<CoinType> {
         let owner = account::account_owner(account_cap);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
 
         let fee = get_borrow_fee_v2(incentive_v3, owner, asset, amount);
@@ -1213,7 +1204,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ): Balance<CoinType> {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
@@ -1239,7 +1229,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ): Balance<CoinType> {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let fee = get_borrow_fee_v2(incentive_v3, user, asset, amount);
@@ -1264,7 +1253,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ) {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, tx_context::sender(ctx));
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let _balance = lending::repay_coin<CoinType>(clock, oracle, storage, pool, asset, repay_coin, amount, ctx);
@@ -1289,7 +1277,6 @@ module lending_core::incentive_v3 {
         account_cap: &AccountCap
     ): Balance<CoinType> {
         let owner = account::account_owner(account_cap);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, owner);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, owner);
 
         lending::repay_with_account_cap<CoinType>(clock, oracle, storage, pool, asset, repay_coin, account_cap)
@@ -1309,7 +1296,6 @@ module lending_core::incentive_v3 {
         incentive_v3: &mut Incentive,
         ctx: &mut TxContext
     ) {
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let _balance = lending::repay_on_behalf_of_user<CoinType>(clock, oracle, storage, pool, asset, user, repay_coin, amount, ctx);
@@ -1335,7 +1321,6 @@ module lending_core::incentive_v3 {
         ctx: &mut TxContext
     ): Balance<CoinType> {
         let user = tx_context::sender(ctx);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, asset, user);
         update_reward_state_by_asset<CoinType>(clock, incentive_v3, storage, user);
 
         let _balance = lending::repay_coin<CoinType>(clock, oracle, storage, pool, asset, repay_coin, amount, ctx);
@@ -1358,8 +1343,6 @@ module lending_core::incentive_v3 {
         incentive_v3: &mut Incentive,
         ctx: &mut TxContext
     ) {
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, collateral_asset, @0x0);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, debt_asset, @0x0);
 
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
@@ -1414,8 +1397,6 @@ module lending_core::incentive_v3 {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ) {
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, collateral_asset, @0x0);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, debt_asset, @0x0);
 
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
@@ -1469,8 +1450,6 @@ module lending_core::incentive_v3 {
         incentive_v3: &mut Incentive,
         ctx: &mut TxContext
     ): (Balance<CollateralCoinType>, Balance<DebtCoinType>) {
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, collateral_asset, @0x0);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, debt_asset, @0x0);
 
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
@@ -1505,8 +1484,6 @@ module lending_core::incentive_v3 {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ): (Balance<CollateralCoinType>, Balance<DebtCoinType>) {
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, collateral_asset, @0x0);
-        // incentive_v2::update_reward_all(clock, incentive_v2, storage, debt_asset, @0x0);
 
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);

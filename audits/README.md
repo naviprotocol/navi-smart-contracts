@@ -11,11 +11,11 @@ This directory contains all security audit reports for the NAVI Protocol. The au
   - Comprehensive security audit of the NAVI protocol
   - Covers core lending functionality and smart contract security
 
-- **OtterSec - 2023**: `NAVI_Full_Audit_OtterSec_2023.pdf.pdf`
+- **OtterSec - 2023**: `NAVI_Full_Audit_OtterSec_2023.pdf`
   - Full protocol security assessment
   - Focus on smart contract vulnerabilities and economic security
 
-- **Salus - 2023**: `NAVI_Penetration_Test_Salus_2023.pdf.pdf`
+- **Salus - 2023**: `NAVI_Penetration_Test_Salus_2023.pdf`
   - Penetration testing and security assessment
   - Real-world attack simulation and vulnerability testing
 
@@ -46,6 +46,20 @@ This directory contains all security audit reports for the NAVI Protocol. The au
 - **Movebit - 2025**: `NAVI_Incentive_Increment_Audit_Movebit_2025.pdf`
   - Incentive mechanism security audit
   - Focus on reward distribution and economic security
+
+- **OtterSec - 2025**: `NAVI_Pool_Increment_Audit_OtterSec_2025.pdf`
+  - Incremental audit of the pool layer
+  - Focus on pool accounting and the staking-backed SUI pool manager
+
+### 2026 Audits
+
+#### Incremental Audits
+- **MoveBit - 2026**: `NAVI_EMode_Increment_Audit_MoveBit_2026.pdf`
+  - Incremental audit of the efficiency mode (E-Mode) feature
+  - Focus on E-Mode LTV/liquidation parameters and user state transitions
+
+- **Veridise - 2026**: `NAVI_EMode_Increment_Audit_Veridise_2026.pdf`
+  - Independent incremental audit of the same E-Mode release
 
 ## Audit Coverage
 

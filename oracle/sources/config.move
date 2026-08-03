@@ -359,13 +359,11 @@ module oracle::config {
     }
 
     public(friend) fun set_oracle_id_to_price_feed(cfg: &mut OracleConfig, feed_id: address, value: u8) {
-        // Q: Why is there this function?
-        // A: Generally speaking: this value is never allowed to change, and needs to be confirmed again again again when initializing the price feed.
-        //    But!!!! The existence of this method prevents incorrect values from being filled in during initialization and is used for later modifications.
-        //    In the end, don't worry, a friend function is provided first. The public function is not provided for the time being.
+        // Corrects the oracle_id bound to a price feed. Restricted to friend modules so that it is
+        // only reachable through the admin-gated entrypoints in oracle_manage.
         assert!(table::contains(&cfg.feeds, feed_id), error::price_feed_not_found());
 
-        // gurantee one oracle_id only has most 1 feed 
+        // guarantee one oracle_id only has at most 1 feed
         let feed_length = vector::length(&cfg.vec_feeds);
         let i = 0;
         while (i < feed_length) {

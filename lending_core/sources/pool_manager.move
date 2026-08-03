@@ -115,7 +115,7 @@ module lending_core::pool_manager {
             let difference = target - pool_sui_amount;
             let vsui_to_unstake = stake_pool::sui_amount_to_lst_amount(stake_pool, metadata, difference);
 
-            // sanity check to gurantee enough vsui to unstake
+            // ensure the pool holds enough vSUI to unstake
             if (vsui_to_unstake > pool_vsui_amount) {
                 vsui_to_unstake = pool_vsui_amount
             };
@@ -167,9 +167,8 @@ module lending_core::pool_manager {
 
         let vsui_to_unstake = stake_pool::sui_amount_to_lst_amount(stake_pool, metadata, required_sui_amount);
 
-        // A sanity check if we have no enough vsui
-        // This should not happen as the vsui will keep growing 
-        // Also, if the vsui is too small, unstake it all
+        // Clamp to the available balance, and unstake the remainder in full when what is left
+        // would fall below MIN_OPERATION_AMOUNT.
         if (vsui_to_unstake + MIN_OPERATION_AMOUNT > balance::value(pool_vsui_balance)) {
             vsui_to_unstake = balance::value(pool_vsui_balance);
         };

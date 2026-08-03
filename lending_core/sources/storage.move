@@ -764,7 +764,7 @@ module lending_core::storage {
         let (supply_index, _) = get_index(storage, asset);
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
 
-        // Without this conversion, then when typpe 1USDT (decimals is 6), the amount of 0.001 will be withdrawn(protocol decimals is 9)
+        // Without this conversion, then for a token like USDT (decimals is 6), the amount of 0.001 will be withdrawn(protocol decimals is 9)
         let withdraw_amount = pool::normal_amount(pool, amount);
 
         let scaled_treasury_value = reserve.treasury_balance;
@@ -1417,8 +1417,8 @@ module lending_core::storage {
         )
     }
 
-    // legacy: should be test only, but it's already public in the old version
-    // #[test_only]
+    // Read-only accessor retained for backward compatibility. Returns an immutable reference to
+    // data that is already publicly readable on chain.
     public fun get_reserve_for_testing(storage: &Storage, asset: u8): (&ReserveData) {
         table::borrow(&storage.reserves, asset)
     }

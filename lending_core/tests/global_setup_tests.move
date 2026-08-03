@@ -55,7 +55,7 @@ module lending_core::global {
         {
             pool::init_for_testing(test_scenario::ctx(scenario_mut));      // Initialization of pool
             storage::init_for_testing(test_scenario::ctx(scenario_mut));   // Initialization of storage
-            oracle::init_for_testing(test_scenario::ctx(scenario_mut));    // Initialization of oracel
+            oracle::init_for_testing(test_scenario::ctx(scenario_mut));    // Initialization of oracle
             btc_test::init_for_testing(test_scenario::ctx(scenario_mut));  // Initialization of BTC coin
             eth_test::init_for_testing(test_scenario::ctx(scenario_mut));  // Initialization of ETH coin
             usdt_test::init_for_testing(test_scenario::ctx(scenario_mut)); // Initialization of USDT coin

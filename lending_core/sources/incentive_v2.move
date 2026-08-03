@@ -129,7 +129,6 @@ module lending_core::incentive_v2 {
     public fun create_funds_pool<T>(_: &OwnerCap, incentive: &mut Incentive, oracle_id: u8, force: bool, ctx: &mut TxContext) {
         version_verification(incentive);
 
-        // TODO: force create, if funds already exists
         let new_id = object::new(ctx);
         let new_obj_address = object::uid_to_address(&new_id);
 
@@ -154,7 +153,6 @@ module lending_core::incentive_v2 {
         })
     }
 
-    // TODO: to be entry?
     public fun add_funds<T>(_: &OwnerCap, funds: &mut IncentiveFundsPool<T>, funds_coin: Coin<T>, value: u64, ctx: &mut TxContext) {
         let before = balance::value(&funds.balance);
         let funds_balance = utils::split_coin_to_balance(funds_coin, value, ctx);

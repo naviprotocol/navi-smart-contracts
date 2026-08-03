@@ -39,7 +39,7 @@ module lending_core::base_sui {
         {
             pool::init_for_testing(test_scenario::ctx(scenario));      // Initialization of pool
             storage::init_for_testing(test_scenario::ctx(scenario));   // Initialization of storage
-            oracle::init_for_testing(test_scenario::ctx(scenario));    // Initialization of oracel
+            oracle::init_for_testing(test_scenario::ctx(scenario));    // Initialization of oracle
             usdc_test::init_for_testing(test_scenario::ctx(scenario)); // Initialization of USDC coin
             incentive::init_for_testing(test_scenario::ctx(scenario)); // Initialization of incentive
         };
