@@ -1343,7 +1343,6 @@ module lending_core::incentive_v3 {
         incentive_v3: &mut Incentive,
         ctx: &mut TxContext
     ) {
-
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
         let sender = tx_context::sender(ctx);
@@ -1397,7 +1396,6 @@ module lending_core::incentive_v3 {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ) {
-
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
         let sender = tx_context::sender(ctx);
@@ -1450,7 +1448,6 @@ module lending_core::incentive_v3 {
         incentive_v3: &mut Incentive,
         ctx: &mut TxContext
     ): (Balance<CollateralCoinType>, Balance<DebtCoinType>) {
-
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
 
@@ -1484,7 +1481,6 @@ module lending_core::incentive_v3 {
         system_state: &mut SuiSystemState, 
         ctx: &mut TxContext
     ): (Balance<CollateralCoinType>, Balance<DebtCoinType>) {
-
         update_reward_state_by_asset<DebtCoinType>(clock, incentive_v3, storage, liquidate_user);
         update_reward_state_by_asset<CollateralCoinType>(clock, incentive_v3, storage, liquidate_user);
 
