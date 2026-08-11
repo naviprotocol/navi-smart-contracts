@@ -245,8 +245,7 @@ module lending_core::logic {
         (liquidable_amount_in_collateral + executor_bonus_amount, executor_excess_amount, treasury_amount)
     }
 
-    // May cause an increase in gas
-    // TODO: If the upgrade fails, need to modify this method to private and add another function
+    // Iterates over every reserve, so gas grows with the number of listed assets.
     public(friend) fun update_state_of_all(clock: &Clock, storage: &mut Storage) {
         let count = storage::get_reserves_count(storage);
 
@@ -317,7 +316,6 @@ module lending_core::logic {
 
 
     // reserve mod
-    // TODO: If the upgrade fails, need to modify this method to private and add another function
     public(friend) fun update_interest_rate(storage: &mut Storage, asset: u8) {
         let borrow_rate = calculator::calculate_borrow_rate(storage, asset);
         let supply_rate = calculator::calculate_supply_rate(storage, asset, borrow_rate);

@@ -5,7 +5,7 @@ module oracle::strategy {
     // |------------------------------------------|------------------------------------------------------|-------------------------------------------------------------------|
     // 0                                          x1                                                     x2                                                                  n
     // |is_within_diff1=true, is_within_diff2=true|      is_within_diff1=false,is_within_diff2=true      |            is_within_diff1=false,is_within_diff2=false            |
-    // returns return severity, critical/major/warning/normal etc.
+    // Returns a severity level: critical / major / warning / normal.
     public fun validate_price_difference(primary_price: u256, secondary_price: u256, threshold1: u64, threshold2: u64, current_timestamp: u64, max_duration_within_thresholds: u64, ratio2_usage_start_time: u64): u8 {
         let diff = utils::calculate_amplitude(primary_price, secondary_price);
 

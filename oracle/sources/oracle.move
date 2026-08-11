@@ -113,7 +113,6 @@ module oracle::oracle {
 
     // function to internally update prices by oracle_pro 
     public(friend) fun update_price(clock: &Clock, price_oracle: &mut PriceOracle, oracle_id: u8, token_price: u256) {
-        // TODO: update_token_price can be merged into update_price
         version_verification(price_oracle);
 
         let price_oracles = &mut price_oracle.price_oracles;

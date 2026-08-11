@@ -19,7 +19,7 @@ module lending_core::incentive {
     use lending_core::utils;
     use lending_core::ray_math;
     use lending_core::safe_math;
-    use lending_core::storage::{Self, Storage};
+    use lending_core::storage::{Self, Storage, OwnerCap};
     use lending_core::error::{Self};
     use lending_core::account::{Self, AccountCap};
 
@@ -337,6 +337,19 @@ module lending_core::incentive {
 
         let claim_balance = balance::split(&mut bal.balance, (amount_to_pay as u64));
         claim_balance
+    }
+
+    public entry fun admin_withdraw_incentive_bal<CoinType>(
+        _: &OwnerCap,
+        storage: &Storage,
+        bal: &mut IncentiveBal<CoinType>,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        storage::version_verification(storage);
+        let amount = balance::value(&bal.balance);
+        let withdrawn = balance::split(&mut bal.balance, amount);
+        transfer::public_transfer(coin::from_balance(withdrawn, ctx), recipient)
     }
 
     public fun get_pool_count(incentive: &Incentive, asset: u8): u64 {

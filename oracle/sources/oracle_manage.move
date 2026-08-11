@@ -154,5 +154,4 @@ module oracle::oracle_manage {
         config::set_secondary_oracle_provider(cfg, feed_id, provider)
     }
 
-    // TODO: integrated creation of config
 }

@@ -24,7 +24,7 @@ module lending_core::base {
         {
             pool::init_for_testing(test_scenario::ctx(scenario));      // Initialization of pool
             storage::init_for_testing(test_scenario::ctx(scenario));   // Initialization of storage
-            oracle::init_for_testing(test_scenario::ctx(scenario));    // Initialization of oracel
+            oracle::init_for_testing(test_scenario::ctx(scenario));    // Initialization of oracle
             eth_test::init_for_testing(test_scenario::ctx(scenario));  // Initialization of ETH coin
             usdt_test::init_for_testing(test_scenario::ctx(scenario)); // Initialization of USDT coin
             usdc_test::init_for_testing(test_scenario::ctx(scenario)); // Initialization of USDC coin
