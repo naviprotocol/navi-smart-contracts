@@ -61,6 +61,12 @@ This directory contains all security audit reports for the NAVI Protocol. The au
 - **Veridise - 2026**: `NAVI_EMode_Increment_Audit_Veridise_2026.pdf`
   - Independent incremental audit of the same E-Mode release
 
+- **MoveBit - 2026**: `NAVI_Oracle_PythPro_Increment_Audit_MoveBit_2026.pdf`
+  - Incremental audit of the migration from the legacy Pyth integration to the
+    `pyth_pro_compatible` oracle stack
+  - Focus on the v2/v3 oracle read and price-update paths, deprecation stubs kept for
+    upgrade compatibility, and the related package and version configuration changes
+
 ## Audit Coverage
 
 The audits cover the following key areas:
