@@ -4,7 +4,7 @@ module lending_core::pool {
     use std::ascii::{String};
 
     use sui::transfer;
-    use sui::event::emit;
+    // use sui::event::emit;
     use sui::coin::{Self, Coin};
     use sui::object::{Self, UID};
     use sui::balance::{Self, Balance};
@@ -100,7 +100,7 @@ module lending_core::pool {
     public(friend) fun create_pool_with_market_id<CoinType>(_: &PoolAdminCap, decimal: u8, market_id: u64, ctx: &mut TxContext) {
         let pool_id = object::new(ctx);
         let pool_address = object::uid_to_address(&pool_id);
-        let coin_type = type_name::into_string(type_name::get<CoinType>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<CoinType>());
         let pool = Pool<CoinType> {
             id: pool_id,
             balance: balance::zero<CoinType>(),
@@ -123,7 +123,7 @@ module lending_core::pool {
         event::emit_pool_deposit(
             tx_context::sender(ctx),
             mint_value,
-            type_name::into_string(type_name::get<CoinType>()),
+            type_name::into_string(type_name::with_defining_ids<CoinType>()),
             market_id
         )
     }
@@ -132,7 +132,7 @@ module lending_core::pool {
         let balance_value = balance::value(&deposit_balance);
         balance::join(&mut pool.balance, deposit_balance);
 
-        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+        if (dynamic_field::exists(&pool.id, PoolManagerKey {})) {
             let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
             pool_manager::update_deposit(manage, balance_value);
         };
@@ -141,7 +141,7 @@ module lending_core::pool {
         event::emit_pool_deposit(
             user,
             balance_value,
-            type_name::into_string(type_name::get<CoinType>()),
+            type_name::into_string(type_name::with_defining_ids<CoinType>()),
             market_id
         )
     }
@@ -156,7 +156,7 @@ module lending_core::pool {
             tx_context::sender(ctx),
             recipient,
             amount,
-            type_name::into_string(type_name::get<CoinType>()),
+            type_name::into_string(type_name::with_defining_ids<CoinType>()),
             market_id
         );
 
@@ -169,7 +169,7 @@ module lending_core::pool {
             return _zero
         };
 
-        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+        if (dynamic_field::exists(&pool.id, PoolManagerKey {})) {
             abort error::invalid_function_call()
         };
 
@@ -179,7 +179,7 @@ module lending_core::pool {
             user,
             user,
             amount,
-            type_name::into_string(type_name::get<CoinType>()),
+            type_name::into_string(type_name::with_defining_ids<CoinType>()),
             market_id
         );
 
@@ -194,7 +194,7 @@ module lending_core::pool {
             return _zero
         };
 
-        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+        if (dynamic_field::exists(&pool.id, PoolManagerKey {})) {
             let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
             pool_manager::update_withdraw(manage, amount);
         };
@@ -205,7 +205,7 @@ module lending_core::pool {
             user,
             user,
             amount,
-            type_name::into_string(type_name::get<CoinType>()),
+            type_name::into_string(type_name::with_defining_ids<CoinType>()),
             market_id
         );
 
@@ -219,7 +219,7 @@ module lending_core::pool {
             return _zero
         };
 
-        let _balance = if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+        let _balance = if (dynamic_field::exists(&pool.id, PoolManagerKey {})) {
             let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
             let _prepare_balance = pool_manager::prepare_before_withdraw<CoinType>(manage, amount, balance::value(&pool.balance), system_state, ctx);
             balance::join(&mut pool.balance, _prepare_balance);
@@ -236,7 +236,7 @@ module lending_core::pool {
             user,
             user,
             amount,
-            type_name::into_string(type_name::get<CoinType>()),
+            type_name::into_string(type_name::with_defining_ids<CoinType>()),
             market_id
         );
 
@@ -248,7 +248,7 @@ module lending_core::pool {
         assert!(total_supply >= deposit_amount, error::insufficient_balance());
 
         let decrease_balance = balance::split(&mut pool.balance, deposit_amount);
-        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+        if (dynamic_field::exists(&pool.id, PoolManagerKey {})) {
             let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
             pool_manager::update_withdraw(manage, deposit_amount);
         };
@@ -283,7 +283,7 @@ module lending_core::pool {
         system_state: &mut SuiSystemState,
         ctx: &mut TxContext
     ) {
-        if (dynamic_field::exists_(&pool.id, PoolManagerKey {})) {
+        if (dynamic_field::exists(&pool.id, PoolManagerKey {})) {
             let manage = dynamic_field::borrow_mut(&mut pool.id, PoolManagerKey {});
             let _prepare_balance = pool_manager::prepare_before_withdraw<CoinType>(manage, amount, balance::value(&pool.balance), system_state, ctx);
             balance::join(&mut pool.balance, _prepare_balance);
@@ -304,7 +304,7 @@ module lending_core::pool {
             amount,
             total_supply,
             total_supply_after_withdraw,
-            type_name::into_string(type_name::get<CoinType>()),
+            type_name::into_string(type_name::with_defining_ids<CoinType>()),
             object::uid_to_address(&pool.id),
             market_id
         );
@@ -351,7 +351,7 @@ module lending_core::pool {
 
     // ------Pool Manager------
     public fun init_sui_pool_manager(_: &PoolAdminCap, pool: &mut Pool<SUI>, stake_pool: StakePool, metadata: Metadata<CERT>, target_sui_amount: u64, ctx: &mut TxContext) {
-        assert!(!dynamic_field::exists_(&pool.id, PoolManagerKey {}), 0);
+        assert!(!dynamic_field::exists(&pool.id, PoolManagerKey {}), 0);
         let pool_manager = pool_manager::new(stake_pool, metadata, balance::value(&pool.balance), target_sui_amount, ctx);
         dynamic_field::add(&mut pool.id, PoolManagerKey {}, pool_manager);
     }

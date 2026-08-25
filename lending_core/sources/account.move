@@ -72,7 +72,7 @@ module lending_core::account {
     }
 
     fun get_or_create_account_field(cap: &mut AccountCap): &mut AccountField {
-        if (!dynamic_field::exists_(&cap.id, AccountFieldKey {})) {
+        if (!dynamic_field::exists(&cap.id, AccountFieldKey {})) {
             dynamic_field::add(&mut cap.id, AccountFieldKey {}, AccountField {
                 account_name: ascii::string(b""),
                 account_description: ascii::string(b""),

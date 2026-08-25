@@ -12,7 +12,7 @@ module lending_core::validation {
      *   - Total collateral is 1.2ETH --> amount = 1.2 * 1e9 = 1200000000
      */
     public fun validate_deposit<CoinType>(storage: &mut Storage, asset: u8, amount: u256) {
-        assert!(type_name::into_string(type_name::get<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
+        assert!(type_name::into_string(type_name::with_defining_ids<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
         assert!(amount != 0, error::invalid_amount());
 
         // e.g. Pool total collateral of 100ETH
@@ -32,7 +32,7 @@ module lending_core::validation {
     }
 
     public fun validate_withdraw<CoinType>(storage: &mut Storage, asset: u8, amount: u256) {
-        assert!(type_name::into_string(type_name::get<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
+        assert!(type_name::into_string(type_name::with_defining_ids<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
         assert!(amount != 0, error::invalid_amount());
 
         let (supply_balance, borrow_balance) = storage::get_total_supply(storage, asset);
@@ -53,7 +53,7 @@ module lending_core::validation {
      *   - borrow amount is 1.2ETH --> amount = 1.2 * 1e9 = 1200000000
      */
     public fun validate_borrow<CoinType>(storage: &mut Storage, asset: u8, amount: u256) {
-        assert!(type_name::into_string(type_name::get<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
+        assert!(type_name::into_string(type_name::with_defining_ids<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
         assert!(amount != 0, error::invalid_amount());
 
         // e.g. get the total lending and total collateral for this pool
@@ -73,13 +73,13 @@ module lending_core::validation {
     }
 
     public fun validate_repay<CoinType>(storage: &mut Storage, asset: u8, amount: u256) {
-        assert!(type_name::into_string(type_name::get<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
+        assert!(type_name::into_string(type_name::with_defining_ids<CoinType>()) == storage::get_coin_type(storage, asset), error::invalid_coin_type());
         assert!(amount != 0, error::invalid_amount());
     }
 
     public fun validate_liquidate<LoanCointype, CollateralCoinType>(storage: &mut Storage, debt_asset: u8, collateral_asset: u8, amount: u256) {
-        assert!(type_name::into_string(type_name::get<LoanCointype>()) == storage::get_coin_type(storage, debt_asset), error::invalid_coin_type());
-        assert!(type_name::into_string(type_name::get<CollateralCoinType>()) == storage::get_coin_type(storage, collateral_asset), error::invalid_coin_type());
+        assert!(type_name::into_string(type_name::with_defining_ids<LoanCointype>()) == storage::get_coin_type(storage, debt_asset), error::invalid_coin_type());
+        assert!(type_name::into_string(type_name::with_defining_ids<CollateralCoinType>()) == storage::get_coin_type(storage, collateral_asset), error::invalid_coin_type());
         assert!(amount != 0, error::invalid_amount())
     }
 }

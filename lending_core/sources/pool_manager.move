@@ -2,7 +2,7 @@
 module lending_core::pool_manager {
 
     use sui::bag::{Self, Bag};
-    use sui::event::emit;
+    // use sui::event::emit;              // unused emit
     use sui::coin::{Self, Coin};
     use sui::object::{Self, UID};
     use sui::balance::{Self, Balance};
