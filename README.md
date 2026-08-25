@@ -51,7 +51,7 @@ https://hackenproof.com/companies/navi-protocol
 | Package | Version | Package ID | Document | Audit |
 |---|---|---|---|---|
 | lending_core | 26 (latest) | `0x512f28261c1a293f49416d8885b8d5d32bde6dd68a99a0be36fe42b248e6833a` | [Preview](https://naviprotocol.gitbook.io/navi-protocol-developer-docs/smart-contract-overview/release-history/navi-lending-protocol-upgrade-announcement-2025-11-17) | ✅ [OtterSec](https://github.com/naviprotocol/navi-smart-contracts/blob/main/audits/NAVI_Pool_Increment_Audit_OtterSec_2025.pdf) |
-| oracle | 5 (latest) | `0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea` | — | ✅ [Veridise](https://github.com/naviprotocol/navi-smart-contracts/blob/main/audits/NAVI_Oracle_Increment_Audit_Veridise_2024.pdf) |
+| oracle | 5 (latest) | `0x4837ae94425107554c8847721cf9954c1ad8e10520433b9e37dc11c507148bea` | — | ✅ [MoveBit](https://github.com/naviprotocol/navi-smart-contracts/blob/main/audits/NAVI_Oracle_PythPro_Increment_Audit_MoveBit_2026.pdf) |
 
 Package IDs above are the current `published-at` values on Sui mainnet; the corresponding
 `original-id` for each package is recorded in its `Published.toml`.
