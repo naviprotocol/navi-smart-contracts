@@ -387,7 +387,7 @@ module lending_core::base {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)] 
 module lending_core::sui_test {
     use sui::coin;
     use std::option;
@@ -421,7 +421,7 @@ module lending_core::sui_test {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)] 
 module lending_core::usdc_test {
     use sui::coin;
     use std::option;
@@ -455,7 +455,7 @@ module lending_core::usdc_test {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)] 
 module lending_core::usdt_test {
     use sui::coin;
     use std::option;
@@ -489,7 +489,7 @@ module lending_core::usdt_test {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)] 
 module lending_core::eth_test {
     use sui::coin;
     use std::option;
@@ -523,7 +523,7 @@ module lending_core::eth_test {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)]
 module lending_core::eth2_test {
     use sui::coin;
     use std::option;
@@ -557,7 +557,7 @@ module lending_core::eth2_test {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)]
 module lending_core::btc_test {
     use sui::coin;
     use std::option;
@@ -591,7 +591,7 @@ module lending_core::btc_test {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)] 
 module lending_core::test_coin {
     use sui::coin;
     use std::option;
@@ -625,7 +625,7 @@ module lending_core::test_coin {
     }
 }
 
-#[test_only]
+#[test_only,allow(deprecated_usage)]
 module lending_core::lib {
 
     use lending_core::storage::{Self, Storage};

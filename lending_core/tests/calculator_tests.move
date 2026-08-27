@@ -12,8 +12,8 @@ module lending_core::calculator_tests {
 
     #[test]
     public fun test_calculate_compounded_interest() {
-        let current_timestamp = 1685000060000;
-        let last_update_timestamp = 1685000000000;
+        let current_timestamp = 1685000060000u64;
+        let last_update_timestamp = 1685000000000u64;
         let rate = 6300000000000000000000000000u256;
 
         let timestamp_diff = (current_timestamp - last_update_timestamp as u256) / 1000;
@@ -37,7 +37,7 @@ module lending_core::calculator_tests {
 
     #[test]
     public fun test_calculate_linear_interest() {
-        let current_timestamp = 1685000060000;
+        let current_timestamp = 1685000060000u64;
         let last_update_timestamp = 1685000000000;
         let rate = 6300000000000000000000000000u256;
 

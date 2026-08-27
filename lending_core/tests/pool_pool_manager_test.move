@@ -8,11 +8,11 @@ module lending_core::pool_pool_manager_test {
     use sui_system::sui_system::{SuiSystemState};
     use liquid_staking::stake_pool::{Self, StakePool, OperatorCap, AdminCap};
     use liquid_staking::cert::{Self, Metadata, CERT};
-    use lending_core::lib::{print, printf};
+    // use lending_core::lib::{print, printf};   unused
     use sui::vec_map::{Self, VecMap};
     use sui::sui::{SUI};
     use sui::balance;
-    use sui::test_utils;
+  use std::unit_test;
     use sui::transfer;
     use sui::coin;
 
@@ -20,17 +20,16 @@ module lending_core::pool_pool_manager_test {
         create_validator_for_testing,
         create_sui_system_state_for_testing,
         advance_epoch,
-        advance_epoch_with_reward_amounts
     };
 
     const OWNER: address = @0xA;
     const VALIDATOR_ADDR_1: address = @0x1;
-    const VALIDATOR_ADDR_2: address = @0x2;
+    // const VALIDATOR_ADDR_2: address = @0x2;
 
     // Test USDC coin
     struct USDC has drop {}
 
-    #[test_only]
+   #[test_only,allow(deprecated_usage)]  
     public fun init_pool_manager(init_sui: u64, target_sui_amount: u64, s: &mut Scenario) {
 
         // Create SuiSystemState with validators
@@ -73,7 +72,7 @@ module lending_core::pool_pool_manager_test {
             let vsui = stake_pool::stake(&mut stake_pool, &mut metadata, &mut system_state, sui, ts::ctx(s));
             stake_pool::set_validator_weights(&mut stake_pool, &mut metadata, &mut system_state, &operator, validator_weights, ts::ctx(s));
 
-            test_utils::destroy(vsui);
+            unit_test::destroy(vsui);
             ts::return_to_sender(s, stake_pool);
             ts::return_to_sender(s, metadata);
             ts::return_to_sender(s, operator);
@@ -121,6 +120,7 @@ module lending_core::pool_pool_manager_test {
 
     // Should create sui pool manager for sui pool only
     #[test]
+    #[allow(deprecated_usage)]
     public fun test_create_pool_manager() {
         let s = ts::begin(OWNER);
         {
@@ -190,7 +190,7 @@ module lending_core::pool_pool_manager_test {
             let vsui = stake_pool::stake(&mut stake_pool, &mut metadata, &mut system_state, sui, ts::ctx(&mut s));
             stake_pool::set_validator_weights(&mut stake_pool, &mut metadata, &mut system_state, &operator, validator_weights, ts::ctx(&mut s));
 
-            test_utils::destroy(vsui);
+            unit_test::destroy(vsui);
             ts::return_to_sender(&s, stake_pool);
             ts::return_to_sender(&s, metadata);
             ts::return_to_sender(&s, operator);
@@ -217,7 +217,7 @@ module lending_core::pool_pool_manager_test {
     }
 
     // Should update deposit/withdraw in sui pool
-    #[test]
+  #[test,allow(unused_variable)]
     public fun test_deposit_withdraw_sui_pool() {
         let s = ts::begin(OWNER);
         {
@@ -275,7 +275,7 @@ module lending_core::pool_pool_manager_test {
             assert!(pool_balance_after == 120_000_000_000, 0);
             assert!(original_after == 120_000_000_000, 0);
 
-            test_utils::destroy(withdraw_balance);
+            unit_test::destroy(withdraw_balance);
             ts::return_shared(system_state);
             ts::return_shared(sui_pool);
         };
@@ -284,7 +284,7 @@ module lending_core::pool_pool_manager_test {
     }
 
     // Should other pools have no effect for deposit/withdraw
-    #[test]
+    #[test,allow(unused_variable)]
     public fun test_other_pools_deposit_withdraw() {
         let s = ts::begin(OWNER);
         {
@@ -323,7 +323,7 @@ module lending_core::pool_pool_manager_test {
             let (pool_balance_after, _, _) = pool::get_pool_info(&usdc_pool);
             assert!(pool_balance_after == 1300_000_000, 0);
 
-            test_utils::destroy(withdraw_balance);
+            unit_test::destroy(withdraw_balance);
             ts::return_shared(usdc_pool);
         };
 
@@ -342,7 +342,7 @@ module lending_core::pool_pool_manager_test {
             let (pool_balance_after, _, _) = pool::get_pool_info(&usdc_pool);
             assert!(pool_balance_after == 1000_000_000, 0);
 
-            test_utils::destroy(withdraw_balance);
+         unit_test::destroy(withdraw_balance);
             ts::return_shared(system_state);
             ts::return_shared(usdc_pool);
         };
@@ -876,7 +876,7 @@ module lending_core::pool_pool_manager_test {
     }
 
     // Test pool::unstake_vsui - unstake vSUI to get SUI back
-    #[test]
+     #[test,allow(deprecated_usage)]
     public fun test_unstake_vsui() {
         let s = ts::begin(OWNER);
         {
@@ -915,7 +915,7 @@ module lending_core::pool_pool_manager_test {
             // Verify we got SUI back (amount should be approximately the same)
             assert!(coin::value(&sui_coin) >= 4_900_000_000, 0); // Allow slight variation
 
-            test_utils::destroy(sui_coin);
+            unit_test::destroy(sui_coin);
             ts::return_shared(system_state);
             ts::return_shared(sui_pool);
         };
@@ -962,7 +962,7 @@ module lending_core::pool_pool_manager_test {
     }
 
     // Test pool::withdraw_vsui_from_treasury
-    #[test]
+      #[test,allow(deprecated_usage)]
     public fun test_withdraw_vsui_from_treasury() {
         let recipient = @0xBEEF;
         let s = ts::begin(OWNER);
@@ -1017,7 +1017,7 @@ module lending_core::pool_pool_manager_test {
     }
 
     // Test pool::get_treasury_sui_amount
-    #[test]
+    #[test,allow(deprecated_usage)]
     public fun test_get_treasury_sui_amount() {
         let s = ts::begin(OWNER);
         {

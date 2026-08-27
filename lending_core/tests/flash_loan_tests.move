@@ -27,7 +27,7 @@ module lending_core::flash_loan_test {
     const OWNER2: address = @0xB;
     const UserA: address = @0xA;
     const UserB: address = @0xB;
-    const UserC: address = @0xC;
+    // const UserC: address = @0xC;         // currently unused
 
     #[test]
     #[expected_failure(abort_code = 1503, location = lending_core::flash_loan)]
@@ -1432,7 +1432,7 @@ module lending_core::flash_loan_test {
             // excess withdraw with fee 201000 * 0.2% = 402
             base_lending_tests::base_withdraw_for_testing(&mut scenario, &clock, &mut pool, 0, 1000402_000000000);
             let (_,t_balance,_) = pool::get_pool_info<SUI_TEST>(&pool);
-            assert(t_balance == 201_000000000, 0);
+            assert!(t_balance == 201_000000000, 0);
             clock::destroy_for_testing(clock);
             test_scenario::return_shared(pool);
         };

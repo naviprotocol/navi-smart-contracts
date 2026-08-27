@@ -1519,13 +1519,13 @@ module lending_core::incentive_v3 {
     #[test_only]
     /// Return asset, asset_coin_type, rules number
     public fun get_asset_pool_params_for_testing<CoinType>(incentive_v3: &Incentive): (address,u8, String, u64) {
-        let key = type_name::into_string(type_name::get<CoinType>());
+        let key = type_name::into_string(type_name:: with_defining_ids<CoinType>());
         let pool = vec_map::get(&incentive_v3.pools, &key);
         (
             object::uid_to_address(&pool.id),
             pool.asset,
             pool.asset_coin_type, 
-            vec_map::size(&pool.rules)
+            vec_map::length(&pool.rules)
         )
     }
 
@@ -1541,11 +1541,11 @@ module lending_core::incentive_v3 {
     #[test_only]
     /// Return enable, rate, last_update_at, global_index
     public fun get_rule_params_for_testing<CoinType, RewardCoinType>(incentive_v3: &Incentive, option: u8): (address, bool, u256, u64, u256) {
-        let key = type_name::into_string(type_name::get<CoinType>());
-        let reward_type_str = type_name::into_string(type_name::get<RewardCoinType>());
+        let key = type_name::into_string(type_name::with_defining_ids<CoinType>());
+        let reward_type_str = type_name::into_string(type_name::with_defining_ids<RewardCoinType>());
 
         let pool = vec_map::get(&incentive_v3.pools, &key);
-        let i = vec_map::size(&pool.rules);
+        let i = vec_map::length(&pool.rules);
         while (i > 0) {
             let (_, rule) = vec_map::get_entry_by_idx(&pool.rules, i - 1);
             if (rule.option == option && rule.reward_coin_type == reward_type_str) {
@@ -1584,7 +1584,7 @@ module lending_core::incentive_v3 {
 
     #[test_only]
     public fun delete_rule_for_testing<CoinType>(incentive: &mut Incentive, rule_id: address) {
-        let coin_type = type_name::into_string(type_name::get<CoinType>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<CoinType>());
         let pool = vec_map::get_mut(&mut incentive.pools, &coin_type);
         let (_addr, Rule { 
             id,
@@ -1619,7 +1619,7 @@ module lending_core::incentive_v3 {
         };
 
         init_borrow_fee_fields(&mut i, ctx);
-        dynamic_field::add(&mut i.id, MARKET_ID_KEY {}, 0);
+        dynamic_field::add(&mut i.id, MARKET_ID_KEY {}, 0u64);
         
         transfer::share_object(i);
         event::emit_incentive_created(tx_context::sender(ctx), addr, 0)

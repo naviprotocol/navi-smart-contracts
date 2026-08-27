@@ -876,8 +876,8 @@ module lending_core::incentive_v2 {
         let pool = Incentive {
             id: new_id,
             version: 0,
-            pool_objs: vector::empty<address>(),
-            inactive_objs: vector::empty<address>(),
+            pool_objs: vector[],
+            inactive_objs: vector[],
             pools: table::new<address, IncentivePool>(ctx),
             funds: table::new<address, IncentiveFundsPoolInfo>(ctx),
         };

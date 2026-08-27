@@ -19,19 +19,19 @@ module lending_core::base_sui {
     use lending_core::storage::{Self, Storage, StorageAdminCap};
     use lending_core::flash_loan::{Config as FlashLoanConfig};
     use sui::vec_map::{Self, VecMap};
-    use sui::test_utils;
+    // use sui::test_utils;
+   use std::unit_test;
 
     use sui_system::governance_test_utils::{
         create_validator_for_testing,
         create_sui_system_state_for_testing,
         advance_epoch,
-        advance_epoch_with_reward_amounts
     };
 
     const VALIDATOR_ADDR_1: address = @0x1;
-    const VALIDATOR_ADDR_2: address = @0x2;
+    // const VALIDATOR_ADDR_2: address = @0x2;   // currently unsued
 
-    #[test_only]
+    #[test_only, allow(deprecated_usage)]
     public fun initial_protocol(scenario: &mut Scenario, clock: &Clock, with_manager: bool) {
         let owner = test_scenario::sender(scenario);
 
@@ -130,7 +130,7 @@ module lending_core::base_sui {
         }
     }
 
-    #[test_only]
+    #[test_only,allow(deprecated_usage)]
     public fun init_pool_manager(init_sui: u64, target_sui_amount: u64, s: &mut Scenario) {
         let owner = test_scenario::sender(s);
 
@@ -174,7 +174,7 @@ module lending_core::base_sui {
             let vsui = stake_pool::stake(&mut stake_pool, &mut metadata, &mut system_state, sui, test_scenario::ctx(s));
             stake_pool::set_validator_weights(&mut stake_pool, &mut metadata, &mut system_state, &operator, validator_weights, test_scenario::ctx(s));
 
-            test_utils::destroy(vsui);
+          unit_test::destroy(vsui);
             test_scenario::return_to_sender(s, stake_pool);
             test_scenario::return_to_sender(s, metadata);
             test_scenario::return_to_sender(s, operator);

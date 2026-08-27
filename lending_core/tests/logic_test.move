@@ -38,7 +38,7 @@ module lending_core::logic_test {
             assert!(total_borrow == 0, 0);
 
             let (collaterals, _) = storage::get_user_assets(&storage, OWNER);
-            let collaterals_after = vector::empty<u8>();
+            let collaterals_after = vector[];
             vector::push_back(&mut collaterals_after, 0);
             assert!(collaterals == collaterals_after, 0);
 
@@ -102,7 +102,7 @@ module lending_core::logic_test {
             assert!(total_borrow == 1, 0);
 
             let (collaterals, loans) = storage::get_user_assets(&stg, OWNER);
-            let collaterals_after = vector::empty<u8>();
+            let collaterals_after = vector[];
             vector::push_back(&mut collaterals_after, 0);
             assert!(collaterals == collaterals_after, 0);
             assert!(loans == collaterals_after, 0);
@@ -192,14 +192,14 @@ module lending_core::logic_test {
 
             logic::execute_borrow_for_testing<USDT_TEST>(&clock, &price_oracle, &mut stg, 0, OWNER, 45);
             let (_, loans) = storage::get_user_assets(&stg, OWNER);
-            let collaterals_before = vector::empty<u8>();
+            let collaterals_before = vector[];
             vector::push_back(&mut collaterals_before, 0);
             assert!(loans == collaterals_before, 0);
 
             let excess_amount = logic::execute_repay_for_testing<USDT_TEST>(&clock, &price_oracle, &mut stg, 0, OWNER, 46);
             assert!(excess_amount == 1, 0);
             let (_, loans) = storage::get_user_assets(&stg, OWNER);
-            assert!(loans == vector::empty<u8>(), 0);
+            assert!(loans == vector[], 0);
 
             clock::destroy_for_testing(clock);
             test_scenario::return_shared(stg);

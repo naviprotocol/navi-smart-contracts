@@ -1301,7 +1301,7 @@ module lending_core::storage {
         let reserve_data = ReserveData {
             id: storage.reserves_count,
             oracle_id: oracle_id,
-            coin_type: type_name::into_string(type_name::get<CoinType>()),
+            coin_type: type_name::into_string(type_name:: with_defining_ids<CoinType>()),
             is_isolated: is_isolated,
             supply_cap_ceiling: supply_cap_ceiling,
             borrow_cap_ceiling: borrow_cap_ceiling,
