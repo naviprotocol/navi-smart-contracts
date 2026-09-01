@@ -11,7 +11,7 @@ module lending_core::incentive_v3 {
     use std::ascii::{Self, String};
     use std::type_name::{Self, TypeName};
 
-    use sui::event::{emit};
+    // use sui::event::{emit};
     use sui::bag::{Self, Bag};
     use sui::object::{Self, UID};
     use sui::transfer::{Self};
@@ -200,7 +200,7 @@ module lending_core::incentive_v3 {
     public(friend) fun version_migrate(incentive: &mut Incentive, version: u64) {
         incentive.version = version;
     }
-
+#[allow(unused_type_parameter)]
     public(friend) fun create_reward_fund<T>(market_id: u64, ctx: &mut TxContext) {
         abort 0
     }
@@ -208,7 +208,7 @@ module lending_core::incentive_v3 {
     public(friend) fun create_reward_fund_with_market_id<T>(storage: &Storage, ctx: &mut TxContext) {
         storage::version_verification(storage);
         let (market_id, _, _) = storage::get_storage_market_info(storage);
-        let coin_type = type_name::into_string(type_name::get<T>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<T>());
 
         let id = object::new(ctx);
         let addr = object::uid_to_address(&id);
@@ -290,7 +290,7 @@ module lending_core::incentive_v3 {
         version_verification(incentive); // version check
         verify_market_storage_incentive(storage, incentive);
 
-        let coin_type = type_name::into_string(type_name::get<T>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<T>());
         assert!(coin_type == storage::get_coin_type(storage, asset_id), error::invalid_coin_type()); // coin type check
         assert!(!vec_map::contains(&incentive.pools, &coin_type), error::duplicate_config());
 
@@ -313,12 +313,12 @@ module lending_core::incentive_v3 {
         version_verification(incentive); // version check
         assert!(option == constants::option_type_supply() || option == constants::option_type_borrow(), error::invalid_option());
 
-        let coin_type = type_name::into_string(type_name::get<T>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<T>());
         assert!(vec_map::contains(&incentive.pools, &coin_type), error::pool_not_found());
 
         let pool = vec_map::get_mut(&mut incentive.pools, &coin_type);
 
-        let reward_coin_type = type_name::into_string(type_name::get<RewardCoinType>());
+        let reward_coin_type = type_name::into_string(type_name::with_defining_ids<RewardCoinType>());
         assert!(!contains_rule(pool, option, reward_coin_type), error::duplicate_config());
 
         let id = object::new(ctx);
@@ -437,7 +437,7 @@ module lending_core::incentive_v3 {
     public(friend) fun withdraw_borrow_fee<T>(incentive: &mut Incentive, amount: u64, ctx: &TxContext): Balance<T> {
         version_verification(incentive); // version check
 
-        let type_name = type_name::get<T>();
+        let type_name = type_name::with_defining_ids<T>();
         assert!(bag::contains(&incentive.fee_balance, type_name), error::invalid_coin_type());
 
         let balance = bag::borrow_mut<TypeName, Balance<T>>(&mut incentive.fee_balance, type_name);
@@ -453,7 +453,7 @@ module lending_core::incentive_v3 {
 
     fun deposit_borrow_fee<T>(incentive: &mut Incentive, balance_mut: &mut Balance<T>, fee_amount: u64, sender: address) {
         if (fee_amount > 0) {
-            let type_name = type_name::get<T>();
+            let type_name = type_name::with_defining_ids<T>();
             let fee = balance::split(balance_mut, fee_amount);
 
             if (bag::contains(&incentive.fee_balance, type_name)) {
@@ -499,7 +499,7 @@ module lending_core::incentive_v3 {
             rate = ray_math::ray_div((total_supply as u256), (duration_ms as u256));
         };
 
-        let coin_type = type_name::into_string(type_name::get<T>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<T>());
         let rule = get_mut_rule<T>(incentive, rule_id);
 
         assert!(rule.max_rate == 0 || rate <= rule.max_rate, error::invalid_value());
@@ -525,7 +525,7 @@ module lending_core::incentive_v3 {
         verify_market_storage_incentive(storage, incentive);
         verify_market_incentive_funds(incentive, reward_fund);
         let reward_balance = balance::zero<RewardCoinType>();
-        let rule_indices = vector::empty<u256>();
+        let rule_indices =  vector[];
         let i = 0;
         let len = vector::length(&coin_types);
         while (i < len) {
@@ -543,7 +543,7 @@ module lending_core::incentive_v3 {
         event::emit_reward_claimed(
             user,
             reward_balance_value,
-            type_name::into_string(type_name::get<RewardCoinType>()),
+            type_name::into_string(type_name::with_defining_ids<RewardCoinType>()),
             rule_ids,
             rule_indices,
             market_id
@@ -559,7 +559,7 @@ module lending_core::incentive_v3 {
         assert!(vec_map::contains(&pool.rules, &rule_id), error::rule_not_found());
 
         let rule = vec_map::get_mut(&mut pool.rules, &rule_id);
-        let reward_coin_type = type_name::into_string(type_name::get<RewardCoinType>());
+        let reward_coin_type = type_name::into_string(type_name::with_defining_ids<RewardCoinType>());
         assert!(rule.reward_coin_type == reward_coin_type, error::invalid_coin_type());
 
         // exits if the rule is not enabled
@@ -628,7 +628,7 @@ module lending_core::incentive_v3 {
     public fun update_reward_state_by_asset<T>(clock: &Clock, incentive: &mut Incentive, storage: &mut Storage, user: address) {
         version_verification(incentive);
         verify_market_storage_incentive(storage, incentive);
-        let coin_type = type_name::into_string(type_name::get<T>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<T>());
         if (!vec_map::contains(&incentive.pools, &coin_type)) {
             return
         };
@@ -716,7 +716,7 @@ module lending_core::incentive_v3 {
     }
 
     fun get_mut_rule<T>(incentive: &mut Incentive, rule_id: address): &mut Rule {
-        let coin_type = type_name::into_string(type_name::get<T>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<T>());
         assert!(vec_map::contains(&incentive.pools, &coin_type), error::pool_not_found());
 
         let pool = vec_map::get_mut(&mut incentive.pools, &coin_type);
@@ -827,7 +827,7 @@ module lending_core::incentive_v3 {
                         reward_coin_type: rule.reward_coin_type,
                         user_claimable_reward: 0,
                         user_claimed_reward: 0,
-                        rule_ids: vector::empty()
+                        rule_ids: vector[]
                     });
                 };
 
@@ -841,7 +841,7 @@ module lending_core::incentive_v3 {
             };
         };
 
-        let return_data = vector::empty<ClaimableReward>();
+        let return_data = vector[];
         let keys = vec_map::keys(&data);
         while (vector::length(&keys) > 0) {
             let key = vector::pop_back(&mut keys);
@@ -857,11 +857,11 @@ module lending_core::incentive_v3 {
 
     /// parse the claimable rewards to return the asset coin types, reward coin types, user total rewards, user claimed rewards, and rule ids
     public fun parse_claimable_rewards(claimable_rewards: vector<ClaimableReward>): (vector<String>, vector<String>, vector<u256>, vector<u256>, vector<vector<address>>) {
-        let asset_coin_types = vector::empty<String>();
-        let reward_coin_types = vector::empty<String>();
-        let user_claimable_rewards = vector::empty<u256>();
-        let user_claimed_rewards = vector::empty<u256>();
-        let rule_ids = vector::empty<vector<address>>();
+        let asset_coin_types = vector[];
+        let reward_coin_types = vector[];
+        let user_claimable_rewards = vector[];
+        let user_claimed_rewards = vector[];
+        let rule_ids = vector[];
 
         while (vector::length(&claimable_rewards) > 0) {
             let claimable_reward = vector::pop_back(&mut claimable_rewards);
@@ -1058,7 +1058,7 @@ module lending_core::incentive_v3 {
         let _balance = lending::withdraw_coin_v2<CoinType>(clock, oracle, storage, pool, asset, amount, system_state, ctx);
         return _balance
     }
-
+#[allow(unused_function)]
     // deprecated
     fun get_borrow_fee(incentive: &Incentive, amount: u64): u64 {
         if (incentive.borrow_fee_rate > 0) {
@@ -1114,7 +1114,7 @@ module lending_core::incentive_v3 {
         let _coin = coin::from_balance(_balance, ctx);
         transfer::public_transfer(_coin, tx_context::sender(ctx));
     }
-
+#[allow(lint(unused_object_with_fields))]
     // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
     public entry fun entry_borrow_v2<CoinType>(
         clock: &Clock,
@@ -1190,7 +1190,7 @@ module lending_core::incentive_v3 {
 
         _balance
     }
-
+#[allow(lint(unused_object_with_fields))]
     // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public fun borrow<CoinType>(
         clock: &Clock,
@@ -1214,7 +1214,7 @@ module lending_core::incentive_v3 {
 
         _balance
     }
-
+#[allow(lint(unused_object_with_fields))]
     // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
     public fun borrow_v2<CoinType>(
         clock: &Clock,
@@ -1326,7 +1326,7 @@ module lending_core::incentive_v3 {
         let _balance = lending::repay_coin<CoinType>(clock, oracle, storage, pool, asset, repay_coin, amount, ctx);
         return _balance
     }
-
+#[allow(lint(unused_object_with_fields))]
     // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public entry fun entry_liquidation<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
@@ -1378,7 +1378,7 @@ module lending_core::incentive_v3 {
             balance::destroy_zero(_bonus_balance)
         }
     }
-
+#[allow(lint(unused_object_with_fields))]
     // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
     public entry fun entry_liquidation_v2<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
@@ -1432,7 +1432,7 @@ module lending_core::incentive_v3 {
             balance::destroy_zero(_bonus_balance)
         }
     }
-
+#[allow(lint(unused_object_with_fields))]
     // V1: Only supports non-SUI assets. May be deprecated in the future, use v2 instead.
     public fun liquidation<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
@@ -1465,6 +1465,7 @@ module lending_core::incentive_v3 {
         )
     }
 
+#[allow(lint(unused_object_with_fields))]
     // V2: Supports all assets. Adds sui_system and ctx parameters for SUI pools with staking/unstaking.
     public fun liquidation_v2<DebtCoinType, CollateralCoinType>(
         clock: &Clock,
@@ -1518,13 +1519,13 @@ module lending_core::incentive_v3 {
     #[test_only]
     /// Return asset, asset_coin_type, rules number
     public fun get_asset_pool_params_for_testing<CoinType>(incentive_v3: &Incentive): (address,u8, String, u64) {
-        let key = type_name::into_string(type_name::get<CoinType>());
+        let key = type_name::into_string(type_name:: with_defining_ids<CoinType>());
         let pool = vec_map::get(&incentive_v3.pools, &key);
         (
             object::uid_to_address(&pool.id),
             pool.asset,
             pool.asset_coin_type, 
-            vec_map::size(&pool.rules)
+            vec_map::length(&pool.rules)
         )
     }
 
@@ -1540,11 +1541,11 @@ module lending_core::incentive_v3 {
     #[test_only]
     /// Return enable, rate, last_update_at, global_index
     public fun get_rule_params_for_testing<CoinType, RewardCoinType>(incentive_v3: &Incentive, option: u8): (address, bool, u256, u64, u256) {
-        let key = type_name::into_string(type_name::get<CoinType>());
-        let reward_type_str = type_name::into_string(type_name::get<RewardCoinType>());
+        let key = type_name::into_string(type_name::with_defining_ids<CoinType>());
+        let reward_type_str = type_name::into_string(type_name::with_defining_ids<RewardCoinType>());
 
         let pool = vec_map::get(&incentive_v3.pools, &key);
-        let i = vec_map::size(&pool.rules);
+        let i = vec_map::length(&pool.rules);
         while (i > 0) {
             let (_, rule) = vec_map::get_entry_by_idx(&pool.rules, i - 1);
             if (rule.option == option && rule.reward_coin_type == reward_type_str) {
@@ -1583,7 +1584,7 @@ module lending_core::incentive_v3 {
 
     #[test_only]
     public fun delete_rule_for_testing<CoinType>(incentive: &mut Incentive, rule_id: address) {
-        let coin_type = type_name::into_string(type_name::get<CoinType>());
+        let coin_type = type_name::into_string(type_name::with_defining_ids<CoinType>());
         let pool = vec_map::get_mut(&mut incentive.pools, &coin_type);
         let (_addr, Rule { 
             id,
@@ -1618,7 +1619,7 @@ module lending_core::incentive_v3 {
         };
 
         init_borrow_fee_fields(&mut i, ctx);
-        dynamic_field::add(&mut i.id, MARKET_ID_KEY {}, 0);
+        dynamic_field::add(&mut i.id, MARKET_ID_KEY {}, 0u64);
         
         transfer::share_object(i);
         event::emit_incentive_created(tx_context::sender(ctx), addr, 0)

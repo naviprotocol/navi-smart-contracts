@@ -257,7 +257,7 @@ module lending_core::storage_test {
 
         test_scenario::next_tx(&mut scenario, OWNER);
         {
-            let asset_id = (0 as u8);
+            let asset_id = (0u64 as u8);
             let stg = test_scenario::take_shared<Storage>(&scenario);
             
             assert!(storage::pause(&stg) == false, 0);
@@ -287,9 +287,9 @@ module lending_core::storage_test {
             assert!(supply_balance == 0 && borrow_balance == 0, 0);
 
             let (collaterals, loans) = storage::get_user_assets(&stg, OWNER);
-            assert!(collaterals == vector::empty<u8>() && loans == loans, 0);
+            assert!(collaterals == vector[] && loans == loans, 0);
             assert!(storage::get_asset_ltv(&stg, asset_id) == 800000000000000000000000000, 0);
-            assert!(storage::get_coin_type(&mut stg, asset_id) == type_name::into_string(type_name::get<USDT_TEST>()), 0);
+            assert!(storage::get_coin_type(&mut stg, asset_id) == type_name::into_string(type_name::with_defining_ids<USDT_TEST>()), 0);
 
             clock::destroy_for_testing(clock);
             test_scenario::return_shared(stg);
@@ -310,12 +310,12 @@ module lending_core::storage_test {
             let stg = test_scenario::take_shared<Storage>(&scenario);
 
             let (_, loans) = storage::get_user_assets(&stg, OWNER);
-            assert!(loans == vector::empty<u8>(), 0);
+            assert!(loans == vector[], 0);
 
             storage::update_user_loans_for_testing(&mut stg, 0, OWNER);
 
             let (_, loans) = storage::get_user_assets(&stg, OWNER);
-            let loansAfter = vector::empty<u8>();
+            let loansAfter = vector[];
             vector::push_back(&mut loansAfter, 0);
             assert!(loans == loansAfter, 0);
 
@@ -337,12 +337,12 @@ module lending_core::storage_test {
             let stg = test_scenario::take_shared<Storage>(&scenario);
 
             let (collaterals, _) = storage::get_user_assets(&stg, OWNER);
-            assert!(collaterals == vector::empty<u8>(), 0);
+            assert!(collaterals == vector[], 0);
 
             storage::update_user_collaterals_for_testing(&mut stg, 0, OWNER);
 
             let (collaterals, _) = storage::get_user_assets(&stg, OWNER);
-            let collateralsAfter = vector::empty<u8>();
+            let collateralsAfter = vector[];
             vector::push_back(&mut collateralsAfter, 0);
             assert!(collaterals == collateralsAfter, 0);
 
@@ -373,14 +373,14 @@ module lending_core::storage_test {
             let stg = test_scenario::take_shared<Storage>(&scenario);
 
             let (_, loans) = storage::get_user_assets(&stg, OWNER);
-            let loans_before = vector::empty<u8>();
+            let loans_before = vector[];
             vector::push_back(&mut loans_before, 0);
             assert!(loans == loans_before, 0);
 
             storage::remove_user_loans_for_testing(&mut stg, 0, OWNER);
 
             let (_, loans) = storage::get_user_assets(&stg, OWNER);
-            assert!(loans == vector::empty<u8>(), 0);
+            assert!(loans == vector[], 0);
 
             test_scenario::return_shared(stg);
         };
@@ -409,14 +409,14 @@ module lending_core::storage_test {
             let stg = test_scenario::take_shared<Storage>(&scenario);
 
             let (collaterals, _) = storage::get_user_assets(&stg, OWNER);
-            let collaterals_before = vector::empty<u8>();
+            let collaterals_before = vector[];
             vector::push_back(&mut collaterals_before, 0);
             assert!(collaterals == collaterals_before, 0);
 
             storage::remove_user_collaterals_for_testing(&mut stg, 0, OWNER);
 
             let (collaterals, _) = storage::get_user_assets(&stg, OWNER);
-            assert!(collaterals == vector::empty<u8>(), 0);
+            assert!(collaterals == vector[], 0);
 
             test_scenario::return_shared(stg);
         };

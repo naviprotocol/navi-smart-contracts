@@ -46,7 +46,7 @@ module lending_core::manage {
         assert!(storage::get_market_id(storage) == pool::get_market_id(pool), error::unmatched_market_id());
 
         let coin_type_from_storage = storage::get_coin_type(storage, asset_id);
-        assert!(type_name::into_string(type_name::get<T>()) == coin_type_from_storage, error::invalid_coin_type());
+        assert!(type_name::into_string(type_name:: with_defining_ids<T>()) == coin_type_from_storage, error::invalid_coin_type());
 
         let pool_address = object::uid_to_address(pool::uid(pool));
 
@@ -68,7 +68,7 @@ module lending_core::manage {
         config: &mut FlashLoanConfig, 
         _value: u64        
     ) {
-        flash_loan::set_asset_rate_to_supplier(config, type_name::into_string(type_name::get<T>()), _value)
+        flash_loan::set_asset_rate_to_supplier(config, type_name::into_string(type_name::with_defining_ids<T>()), _value)
     }
 
     public fun set_flash_loan_asset_rate_to_treasury<T>(
@@ -76,7 +76,7 @@ module lending_core::manage {
         config: &mut FlashLoanConfig, 
         _value: u64        
     ) {
-        flash_loan::set_asset_rate_to_treasury(config, type_name::into_string(type_name::get<T>()), _value)
+        flash_loan::set_asset_rate_to_treasury(config, type_name::into_string(type_name:: with_defining_ids<T>()), _value)
     }
 
     public fun set_flash_loan_asset_min<T>(
@@ -84,7 +84,7 @@ module lending_core::manage {
         config: &mut FlashLoanConfig, 
         _value: u64        
     ) {
-        flash_loan::set_asset_min(config, type_name::into_string(type_name::get<T>()), _value)
+        flash_loan::set_asset_min(config, type_name::into_string(type_name::with_defining_ids<T>()), _value)
     }
 
     public fun set_flash_loan_asset_max<T>(
@@ -92,7 +92,7 @@ module lending_core::manage {
         config: &mut FlashLoanConfig, 
         _value: u64        
     ) {
-        flash_loan::set_asset_max(config, type_name::into_string(type_name::get<T>()), _value)
+        flash_loan::set_asset_max(config, type_name::into_string(type_name::with_defining_ids<T>()), _value)
     }
 
     // Incentive V3
@@ -107,7 +107,7 @@ module lending_core::manage {
 
         incentive_v3::version_migrate(incentive, version::this_version())
     }
-
+#[allow(unused_type_parameter)]
     public fun create_incentive_v3_reward_fund<T>(_: &IncentiveOwnerCap, ctx: &mut TxContext) {
         abort 0;
     }

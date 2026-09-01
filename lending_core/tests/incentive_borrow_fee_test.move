@@ -630,7 +630,7 @@ module lending_core::incentive_borrow_fee_test {
     }
 
     // Should apply borrow fee in all borrow entry functions (entry_borrow, entry_borrow_v2, borrow, borrow_v2, borrow_with_account_cap, borrow_with_account_cap_v2)
-    #[test]
+    #[test,allow(deprecated_usage)]
     public fun test_borrow_fee_applied_in_all_entry_functions() {
         let userA = USER_1;
         let scenarioA = ts::begin(userA);

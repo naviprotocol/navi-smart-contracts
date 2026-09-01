@@ -28,7 +28,7 @@ module lending_core::manage_test {
     const OWNER: address = @0xA;
 
     const USER_A: address = @0xB;
-    const USER_B: address = @0xC;
+    // const USER_B: address = @0xC;        //unsued curretnly
 
     const SUI_ASSET_ID: u8 = 0;
     const USDC_ASSET_ID: u8 = 1;
@@ -465,7 +465,7 @@ module lending_core::manage_test {
             deposit_in_empty_pool_for_testing<SUI_TEST>(&mut scenario, &_clock, SUI_ASSET_ID, 1000000_000000000);
         };
         // flash loan 1000 Sui with default fee rate
-        let supply_index_diff_in_first_time_flash_loan = 0;
+        let supply_index_diff_in_first_time_flash_loan = 0u64;
         test_scenario::next_tx(&mut scenario, OWNER);
         {
             let storage = test_scenario::take_shared<Storage>(&scenario);
@@ -873,7 +873,7 @@ module lending_core::manage_test {
             std::debug::print(&d);
             print(&supply_index); // 1000009449999999998177500000
             let (total_supply, _) = storage::get_total_supply(&mut storage, USDT_ASSET_ID);
-            let actual_amount = lending_core::ray_math::ray_div((900000000 as u256), _before_supply_index);
+            let actual_amount = lending_core::ray_math::ray_div((900000000u64 as u256), _before_supply_index);
             print(&actual_amount); // 899999595
             print(&total_supply); // 1e14
             print(&_before_supply_index); // 1000000450000000000000000000
@@ -993,7 +993,7 @@ module lending_core::manage_test {
         5.UserA flash loan 10 Sui
         6.UserA borrow 100 Sui
     */
-    #[test]
+   #[test,allow(unused_variable)]
     public fun test_borrow_with_empty_flash_loan_rate() {
         let user_a_scenario = test_scenario::begin(USER_A);
         let user_a_test_clock = clock::create_for_testing(test_scenario::ctx(&mut user_a_scenario));
@@ -1142,7 +1142,7 @@ module lending_core::manage_test {
         5.UserA flash loan 10 Sui
         6.UserA borrow 100 Sui
     */
-    #[test]
+    #[test,allow(unused_variable)]
     public fun test_borrow_with_non_empty_flash_loan_rate() {
         let user_a_scenario = test_scenario::begin(USER_A);
         let user_a_test_clock = clock::create_for_testing(test_scenario::ctx(&mut user_a_scenario));

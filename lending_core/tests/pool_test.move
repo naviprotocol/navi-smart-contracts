@@ -4,7 +4,7 @@ module lending_core::pool_test {
     use sui::sui::SUI;
     use sui::coin::{Self, Coin};
     use sui::test_scenario::{Self};
-    
+    use std::unit_test;
     use lending_core::pool::{Self, Pool, PoolAdminCap};
 
     const OWNER: address = @0xA;
@@ -371,7 +371,7 @@ module lending_core::pool_test {
             let (balance_value, _, _) = pool::get_pool_info(&pool);
             assert!(balance_value == 3_000_000_000, 0);
 
-            test_utils::destroy(withdrawn);
+            unit_test::destroy(withdrawn);
             test_scenario::return_shared(pool);
         };
 
@@ -383,7 +383,7 @@ module lending_core::pool_test {
             let zero_balance = pool::withdraw_balance_for_testing(&mut pool, 0, OWNER);
             assert!(balance::value(&zero_balance) == 0, 0);
 
-            test_utils::destroy(zero_balance);
+            unit_test::destroy(zero_balance);
             test_scenario::return_shared(pool);
         };
 

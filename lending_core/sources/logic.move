@@ -10,7 +10,7 @@ module lending_core::logic {
     use lending_core::calculator::{Self};
     use lending_core::storage::{Self, Storage};
     use lending_core::error::{Self};
-    use sui::event::emit;
+    // use sui::event::emit;
     use lending_core::constants::{Self};
     use lending_core::event;
 
@@ -389,7 +389,7 @@ module lending_core::logic {
     public fun user_health_factor_batch(clock: &Clock, oracle: &PriceOracle, storage: &mut Storage, users: vector<address>): vector<u256> {
         let len = vector::length(&users);
         let i = 0;
-        let results = vector::empty<u256>();
+        let results = vector[];
         while (i < len) {
             let health_factor = user_health_factor(clock, storage, oracle, *vector::borrow(&users, i));
             vector::push_back(&mut results, health_factor);

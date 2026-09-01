@@ -87,7 +87,7 @@ module lending_core::incentive {
             admins: table::new<u256, bool>(ctx),
 
             pools: table::new<u8, PoolInfo>(ctx),
-            assets: vector::empty<u8>(),
+            assets: vector[],
         })
     }
 
@@ -127,7 +127,7 @@ module lending_core::incentive {
             admin: admin, value: val
         })
     }
-
+#[allow(lint(public_entry))]
     public entry fun add_pool<CoinType>(
         incentive: &mut Incentive,
         clock: &Clock,
@@ -146,16 +146,16 @@ module lending_core::incentive {
             table::add(&mut incentive.pools, asset, PoolInfo{
                 id: asset,
                 last_update_time: 0,
-                coin_types: vector::empty<String>(),
-                start_times: vector::empty<u64>(),
-                end_times: vector::empty<u64>(),
-                total_supplys: vector::empty<u256>(),
-                rates: vector::empty<u256>(),
-                index_rewards: vector::empty<u256>(),
-                index_rewards_paids: vector::empty<Table<address, u256>>(),
-                user_acc_rewards: vector::empty<Table<address, u256>>(),
-                user_acc_rewards_paids: vector::empty<Table<address, u256>>(),
-                oracle_ids: vector::empty<u8>(),
+               coin_types: vector[],
+start_times: vector[],
+end_times: vector[],
+total_supplys: vector[],
+rates: vector[],
+index_rewards: vector[],
+index_rewards_paids: vector[],
+user_acc_rewards: vector[],
+user_acc_rewards_paids: vector[],
+oracle_ids: vector[],
             });
             vector::push_back(&mut incentive.assets, asset)
         };
@@ -163,7 +163,7 @@ module lending_core::incentive {
         let pool_info = table::borrow_mut(&mut incentive.pools, asset);
         let current_idx = vector::length(&pool_info.coin_types);
 
-        vector::push_back(&mut pool_info.coin_types, type_name::into_string(type_name::get<CoinType>()));
+        vector::push_back(&mut pool_info.coin_types, type_name::into_string(type_name:: with_defining_ids<CoinType>()));
         vector::push_back(&mut pool_info.start_times, start_time);
         vector::push_back(&mut pool_info.end_times, end_time);
         vector::push_back(&mut pool_info.total_supplys, (amount as u256));
@@ -235,8 +235,8 @@ module lending_core::incentive {
         let length = vector::length(&pool_info.coin_types);
         let i = 0;
 
-        let index_rewards = vector::empty<u256>();
-        let user_acc_rewards = vector::empty<u256>();
+        let index_rewards = vector[];
+        let user_acc_rewards = vector[];
         while(i < length) {
             let start_time = *vector::borrow(&pool_info.start_times, i);
             if (start_time < pool_info.last_update_time) {
@@ -338,7 +338,7 @@ module lending_core::incentive {
         let claim_balance = balance::split(&mut bal.balance, (amount_to_pay as u64));
         claim_balance
     }
-
+#[allow(lint(public_entry))]
     public entry fun admin_withdraw_incentive_bal<CoinType>(
         _: &OwnerCap,
         storage: &Storage,
@@ -380,9 +380,9 @@ module lending_core::incentive {
         asset: u8,
         account: address
     ): (vector<String>, vector<u256>, vector<u8>) {
-        let coin_types = vector::empty<String>();
-        let user_earned_rewards = vector::empty<u256>();
-        let oracle_ids = vector::empty<u8>();
+        let coin_types = vector[];
+        let user_earned_rewards = vector[];
+        let oracle_ids = vector[];          // @info changed deprecated vectot 
 
         if (table::contains(&incentive.pools, asset)) {
             let current_timestamp = clock::timestamp_ms(clock);

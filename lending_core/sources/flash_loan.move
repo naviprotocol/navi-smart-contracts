@@ -3,7 +3,7 @@ module lending_core::flash_loan {
     use std::ascii::{Self, String};
 
     use sui::transfer;
-    use sui::event::emit;
+    // use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::clock::{Clock};
@@ -100,7 +100,7 @@ module lending_core::flash_loan {
     // only current main market needs to be initialized
     // other markets will be initialized when creating reserves
     public fun init_config_for_main_market(_: &StorageAdminCap, config: &mut Config) {
-        dynamic_field::add(&mut config.id, MARKET_ID_KEY {}, (0 as u64));
+        dynamic_field::add(&mut config.id, MARKET_ID_KEY {}, (0u64 as u64));
     }
 
     // Flash Loan Manage
@@ -166,7 +166,7 @@ module lending_core::flash_loan {
     // Flash Loan Options
     public(friend) fun loan<CoinType>(config: &Config, _pool: &mut Pool<CoinType>, _user: address, _loan_amount: u64): (Balance<CoinType>, Receipt<CoinType>) {
         version_verification(config);
-        let str_type = type_name::into_string(type_name::get<CoinType>());
+        let str_type = type_name::into_string(type_name::with_defining_ids<CoinType>());
         assert!(table::contains(&config.support_assets, *ascii::as_bytes(&str_type)), error::reserve_not_found());
         let asset_id = table::borrow(&config.support_assets, *ascii::as_bytes(&str_type));
         let cfg = table::borrow(&config.assets, *asset_id);
@@ -197,7 +197,7 @@ module lending_core::flash_loan {
 
     public(friend) fun loan_v2<CoinType>(config: &Config, _pool: &mut Pool<CoinType>, _user: address, _loan_amount: u64, sui_system: &mut SuiSystemState, ctx: &mut TxContext): (Balance<CoinType>, Receipt<CoinType>) {
         version_verification(config);
-        let str_type = type_name::into_string(type_name::get<CoinType>());
+        let str_type = type_name::into_string(type_name::with_defining_ids<CoinType>());
         assert!(table::contains(&config.support_assets, *ascii::as_bytes(&str_type)), error::reserve_not_found());
         let asset_id = table::borrow(&config.support_assets, *ascii::as_bytes(&str_type));
         let cfg = table::borrow(&config.assets, *asset_id);
@@ -235,7 +235,7 @@ module lending_core::flash_loan {
         // handler logic
         {
             logic::update_state_of_all(clock, storage);
-            let asset_id = get_storage_asset_id_from_coin_type(storage, type_name::into_string(type_name::get<CoinType>()));
+            let asset_id = get_storage_asset_id_from_coin_type(storage, type_name::into_string(type_name::with_defining_ids<CoinType>()));
 
             let normal_amount = pool::normal_amount(_pool, fee_to_supplier);
             let (supply_index, _) = storage::get_index(storage, asset_id);
@@ -285,7 +285,7 @@ module lending_core::flash_loan {
     }
 
     public fun get_asset<T>(config: &Config): (address, u8, vector<u8>, address, u64, u64, u64, u64) {
-        let str_type = type_name::into_string(type_name::get<T>());
+        let str_type = type_name::into_string(type_name::with_defining_ids<T>());
         assert!(table::contains(&config.support_assets, *ascii::as_bytes(&str_type)), error::reserve_not_found());
         let asset_id = table::borrow(&config.support_assets, *ascii::as_bytes(&str_type));
         let cfg = table::borrow(&config.assets, *asset_id);

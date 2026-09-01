@@ -136,18 +136,18 @@ module lending_core::incentive_v2 {
             id: new_id,
             oracle_id: oracle_id,
             balance: balance::zero<T>(),
-            coin_type: type_name::get<T>(),
+            coin_type: type_name::with_defining_ids<T>(),
         });
 
         table::add(&mut incentive.funds, new_obj_address, IncentiveFundsPoolInfo {
             id: object::new(ctx),
             oracle_id: oracle_id,
-            coin_type: type_name::get<T>(),
+            coin_type: type_name::with_defining_ids<T>(),
         });
 
         emit(CreateFundsPool {
             sender: tx_context::sender(ctx),
-            coin_type: type_name::get<T>(),
+            coin_type: type_name::with_defining_ids<T>(),
             force: force,
             oracle_id: oracle_id,
         })
@@ -188,8 +188,8 @@ module lending_core::incentive_v2 {
         let pool = Incentive {
             id: new_id,
             version: version::this_version(),
-            pool_objs: vector::empty<address>(),
-            inactive_objs: vector::empty<address>(),
+            pool_objs: vector[],
+            inactive_objs: vector[],
             pools: table::new<address, IncentivePool>(ctx),
             funds: table::new<address, IncentiveFundsPoolInfo>(ctx),
         };
@@ -250,8 +250,8 @@ module lending_core::incentive_v2 {
     }
 
     public fun freeze_incentive_pool(_: &OwnerCap, incentive_v2: &mut Incentive, deadline: u64) {
-        let new_active_pools = vector::empty<address>();
-        let new_inactive_pools = vector::empty<address>();
+        let new_active_pools = vector[];
+        let new_inactive_pools = vector[];
 
         let pool_length = vector::length(&incentive_v2.pool_objs);
         while (pool_length > 0) {
@@ -347,7 +347,7 @@ module lending_core::incentive_v2 {
 
     public fun get_pool_from_funds_pool<T>(incentive: &Incentive, funds_pool: &IncentiveFundsPool<T>, asset_id: u8, option: u8): vector<address> {
         let funds_pool_obj = object::uid_to_address(&funds_pool.id);
-        let ret = vector::empty<address>();
+        let ret = vector[];
 
         let pool_objs = incentive.pool_objs;
         let pool_length = vector::length(&pool_objs);
@@ -487,9 +487,9 @@ module lending_core::incentive_v2 {
         let pool_objs = incentive.pool_objs;
         let pool_length = vector::length(&pool_objs);
 
-        let pools_by_asset = vector::empty<address>();
-        let pools_by_option = vector::empty<address>();
-        let pools_by_asset_and_option = vector::empty<address>();
+        let pools_by_asset = vector[];
+        let pools_by_option = vector[];
+        let pools_by_asset_and_option = vector[];
         while (pool_length > 0) {
             let obj = *vector::borrow(&pool_objs, pool_length-1);
             let info = table::borrow(&incentive.pools, obj);
@@ -519,7 +519,7 @@ module lending_core::incentive_v2 {
         let pool_objs = incentive.pool_objs;
         let pool_length = vector::length(&pool_objs);
 
-        let pools = vector::empty<address>();
+        let pools = vector[];
         while (pool_length > 0) {
             let obj = *vector::borrow(&pool_objs, pool_length-1);
             let info = table::borrow(&incentive.pools, obj);
@@ -876,8 +876,8 @@ module lending_core::incentive_v2 {
         let pool = Incentive {
             id: new_id,
             version: 0,
-            pool_objs: vector::empty<address>(),
-            inactive_objs: vector::empty<address>(),
+            pool_objs: vector[],
+            inactive_objs: vector[],
             pools: table::new<address, IncentivePool>(ctx),
             funds: table::new<address, IncentiveFundsPoolInfo>(ctx),
         };

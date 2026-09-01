@@ -97,12 +97,12 @@ module lending_core::calculator {
     public fun calculate_value(clock: &Clock, oracle: &PriceOracle, amount: u256, oracle_id: u8): u256 {
         let (is_valid, price, decimal) = oracle::get_token_price(clock, oracle, oracle_id);
         assert!(is_valid, error::invalid_price());
-        amount * price / (sui::math::pow(10, decimal) as u256)
+        amount * price / (std::u64::pow(10, decimal) as u256)
     }
 
     public fun calculate_amount(clock: &Clock, oracle: &PriceOracle, value: u256, oracle_id: u8): u256 {
         let (is_valid, price, decimal) = oracle::get_token_price(clock, oracle, oracle_id);
         assert!(is_valid, error::invalid_price());
-        value * (sui::math::pow(10, decimal) as u256) / price
+        value * (std::u64::pow(10, decimal) as u256) / price
     }
 }

@@ -5,7 +5,7 @@ module lending_core::storage {
     use std::ascii::{Self ,String, string};
 
     use sui::transfer;
-    use sui::event::emit;
+    // use sui::event::emit;
     use sui::object::{Self, UID};
     use sui::table::{Self, Table};
     use sui::clock::{Self, Clock};
@@ -205,7 +205,7 @@ module lending_core::storage {
             paused: false,
             reserves: table::new<u8, ReserveData>(ctx),
             reserves_count: 0,
-            users: vector::empty<address>(),
+            users: vector[],
             user_info: table::new<address, UserInfo>(ctx),
         };
 
@@ -271,7 +271,7 @@ module lending_core::storage {
         let reserve_data = ReserveData {
             id: storage.reserves_count,
             oracle_id: oracle_id,
-            coin_type: type_name::into_string(type_name::get<CoinType>()),
+            coin_type: type_name::into_string(type_name::with_defining_ids<CoinType>()),
             is_isolated: is_isolated,
             supply_cap_ceiling: supply_cap_ceiling,
             borrow_cap_ceiling: borrow_cap_ceiling,
@@ -448,7 +448,7 @@ module lending_core::storage {
     //                             The methods required to get value                            //
     //////////////////////////////////////////////////////////////////////////////////////////////
     public fun reserve_validation<CoinType>(storage: &Storage) {
-        let name = type_name::into_string(type_name::get<CoinType>());
+        let name = type_name::into_string(type_name::with_defining_ids<CoinType>());
         let count = storage.reserves_count;
         let i = 0;
         
@@ -469,7 +469,7 @@ module lending_core::storage {
 
     public fun get_user_assets(storage: &Storage, user: address): (vector<u8>, vector<u8>){
         if (!table::contains(&storage.user_info, user)) {
-            return (vector::empty<u8>(), vector::empty<u8>())
+            return (vector[], vector[])
         };
 
         let user_info = table::borrow(&storage.user_info, user);
@@ -681,11 +681,11 @@ module lending_core::storage {
 
     public(friend) fun update_user_loans(storage: &mut Storage, asset: u8, user: address) {
         if (!table::contains(&storage.user_info, user)) {
-            let loans = vector::empty<u8>();
+            let loans = vector[];
             vector::push_back(&mut loans, asset);
 
             let user_info = UserInfo {
-                collaterals: vector::empty<u8>(),
+                collaterals: vector[],
                 loans: loans,
             };
             table::add(&mut storage.user_info, user, user_info)
@@ -707,12 +707,12 @@ module lending_core::storage {
 
     public(friend) fun update_user_collaterals(storage: &mut Storage, asset: u8, user: address) {
         if (!table::contains(&storage.user_info, user)) {
-            let collaterals = vector::empty<u8>();
+            let collaterals = vector[];
             vector::push_back(&mut collaterals, asset);
 
             let user_info = UserInfo {
                 collaterals: collaterals,
-                loans: vector::empty<u8>(),
+                loans: vector[],
             };
             table::add(&mut storage.user_info, user, user_info)
         } else {
@@ -730,7 +730,7 @@ module lending_core::storage {
             _ = vector::remove(&mut user_info.collaterals, index)
         }
     }
-
+#[allow(unused_variable)]
     public fun withdraw_treasury<CoinType>(
         _: &StorageAdminCap,
         pool_admin_cap: &PoolAdminCap,
@@ -759,7 +759,7 @@ module lending_core::storage {
         verify_market_storage_pool(storage, pool);
         
         let coin_type = get_coin_type(storage, asset);
-        assert!(coin_type == type_name::into_string(type_name::get<CoinType>()), error::invalid_coin_type());
+        assert!(coin_type == type_name::into_string(type_name::with_defining_ids<CoinType>()), error::invalid_coin_type());
 
         let (supply_index, _) = get_index(storage, asset);
         let reserve = table::borrow_mut(&mut storage.reserves, asset);
@@ -1102,7 +1102,7 @@ module lending_core::storage {
     // only current main market needs to be initialized
     // other markets will be initialized when creating reserves
     fun init_main_market(storage: &mut Storage) {
-        assert!(!dynamic_field::exists_(&storage.id, MARKET_KEY {}), error::invalid_function_call());
+        assert!(!dynamic_field::exists(&storage.id, MARKET_KEY {}), error::invalid_function_call());
         let market_info = MarketInfo {
             market_id: 0,
             last_market_id: 0,
@@ -1122,7 +1122,7 @@ module lending_core::storage {
             paused: false,
             reserves: table::new<u8, ReserveData>(ctx),
             reserves_count: 0,
-            users: vector::empty<address>(),
+            users: vector[],
             user_info: table::new<address, UserInfo>(ctx),
         };
 
@@ -1301,7 +1301,7 @@ module lending_core::storage {
         let reserve_data = ReserveData {
             id: storage.reserves_count,
             oracle_id: oracle_id,
-            coin_type: type_name::into_string(type_name::get<CoinType>()),
+            coin_type: type_name::into_string(type_name:: with_defining_ids<CoinType>()),
             is_isolated: is_isolated,
             supply_cap_ceiling: supply_cap_ceiling,
             borrow_cap_ceiling: borrow_cap_ceiling,
