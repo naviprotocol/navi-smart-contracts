@@ -268,7 +268,11 @@ module lending_core::incentive {
                     user_acc_reward = *table::borrow(_user_acc_rewards, account);
                 };
 
-                let index_rewards_paid = 0;
+                // A user with no checkpoint has never been settled against this pool. Starting
+                // them at the pool's current index credits nothing for the elapsed window, which
+                // is the only correct settlement for a balance that was not held while it was
+                // distributing
+                let index_rewards_paid = index_reward;
                 let index_rewards_paids = vector::borrow(&pool_info.index_rewards_paids, i);
                 if (table::contains(index_rewards_paids, account)) {
                     index_rewards_paid = *table::borrow(index_rewards_paids, account);

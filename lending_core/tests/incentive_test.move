@@ -335,7 +335,11 @@ module lending_core::incentive_tests {
             std::debug::print(vector::borrow(&user_earned_rewards, 0));
             assert!(vector::length(&coin_types) == 1, 0);
             assert!(vector::length(&user_earned_rewards) == 1, 0);
-            assert!(*vector::borrow(&user_earned_rewards, 0) == 50_000000000*ray_math::ray(), 0);
+            // OWNER holds a balance but has never been settled against this v1 pool, so they
+            // have no reward checkpoint. An absent checkpoint is now read as the pool's current
+            // index rather than as zero, which credits nothing for the elapsed window instead of
+            // the pool's entire historical index
+            assert!(*vector::borrow(&user_earned_rewards, 0) == 0, 0);
             assert!(vector::length(&oracle_ids) == 1, 0);
             assert!(*vector::borrow(&oracle_ids, 0) == 0, 0);
 
