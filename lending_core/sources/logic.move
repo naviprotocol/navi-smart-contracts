@@ -288,6 +288,12 @@ module lending_core::logic {
         let last_update_timestamp = storage::get_last_update_timestamp(storage, asset);
         let timestamp_difference = (current_timestamp - last_update_timestamp as u256) / 1000;
 
+        // Nothing has settled yet: writing state here would advance the clock without
+        // accruing any interest, so the elapsed sub-second remainder must be left alone
+        if (timestamp_difference == 0) {
+            return
+        };
+
         // Get All required reserve configurations
         let (current_supply_index, current_borrow_index) = storage::get_index(storage, asset);
         let (current_supply_rate, current_borrow_rate) = storage::get_current_rate(storage, asset);
@@ -309,7 +315,11 @@ module lending_core::logic {
         );
         let scaled_treasury_amount = ray_math::ray_div(treasury_amount, new_supply_index);
 
-        storage::update_state(storage, asset, new_borrow_index, new_supply_index, current_timestamp, scaled_treasury_amount);
+        // Only advance by the whole seconds that were actually settled, so the sub-second
+        // remainder carries into the next interval instead of being discarded
+        let settled_timestamp = last_update_timestamp + ((timestamp_difference * 1000) as u64);
+
+        storage::update_state(storage, asset, new_borrow_index, new_supply_index, settled_timestamp, scaled_treasury_amount);
         storage::increase_total_supply_balance(storage, asset, scaled_treasury_amount);
         // storage::increase_balance_for_pool(storage, asset, scaled_supply_amount, scaled_borrow_amount + scaled_reserve_amount) // **No need to double calculate interest
     }

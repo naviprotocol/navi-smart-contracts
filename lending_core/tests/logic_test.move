@@ -11,6 +11,8 @@ module lending_core::logic_test {
     use lending_core::logic::{Self};
     use lending_core::eth_test::{ETH_TEST};
     use lending_core::usdt_test::{USDT_TEST};
+    use lending_core::btc_test::{BTC_TEST};
+    use lending_core::usdc_test::{USDC_TEST};
     use lending_core::storage::{Self, Storage};
 
     const OWNER: address = @0xA;
@@ -294,6 +296,191 @@ module lending_core::logic_test {
     }
 
     // // TODO
+    // Deposits and then borrows on USDT(asset 0) so that both interest rates are non-zero,
+    // leaving last_update_timestamp at `at_ms`
+    fun setup_borrowed_reserve(scenario: &mut test_scenario::Scenario, at_ms: u64) {
+        test_scenario::next_tx(scenario, OWNER);
+        let stg = test_scenario::take_shared<Storage>(scenario);
+        let price_oracle = test_scenario::take_shared<PriceOracle>(scenario);
+        let clock = clock::create_for_testing(test_scenario::ctx(scenario));
+
+        logic::execute_deposit_for_testing<USDT_TEST>(&clock, &mut stg, 0, OWNER, 1000_000000000);
+
+        clock::set_for_testing(&mut clock, at_ms);
+        logic::execute_borrow_for_testing<USDT_TEST>(&clock, &price_oracle, &mut stg, 0, OWNER, 500_000000000);
+
+        let (current_supply_rate, current_borrow_rate) = storage::get_current_rate(&mut stg, 0);
+        assert!(current_supply_rate > 0 && current_borrow_rate > 0, 0);
+        assert!(storage::get_last_update_timestamp(&stg, 0) == at_ms, 0);
+
+        clock::destroy_for_testing(clock);
+        test_scenario::return_shared(stg);
+        test_scenario::return_shared(price_oracle);
+    }
+
+    fun abs_diff(a: u256, b: u256): u256 {
+        if (a > b) { a - b } else { b - a }
+    }
+
+    // An update with no whole second elapsed must write nothing at all, neither the indexes
+    // nor the timestamp, otherwise the elapsed interval is consumed without any accrual
+    #[test]
+    public fun test_update_state_zero_elapsed_is_a_no_op() {
+        let scenario = test_scenario::begin(OWNER);
+        {
+            global::init_protocol(&mut scenario);
+        };
+
+        setup_borrowed_reserve(&mut scenario, 5000);
+
+        test_scenario::next_tx(&mut scenario, OWNER);
+        {
+            let stg = test_scenario::take_shared<Storage>(&scenario);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::set_for_testing(&mut clock, 5000);
+
+            let (supply_index_before, borrow_index_before) = storage::get_index(&mut stg, 0);
+
+            // Same millisecond as the last update
+            logic::update_state_for_testing(&clock, &mut stg, 0);
+
+            let (supply_index_after, borrow_index_after) = storage::get_index(&mut stg, 0);
+            assert!(supply_index_after == supply_index_before, 0);
+            assert!(borrow_index_after == borrow_index_before, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 0) == 5000, 0);
+
+            // Sub-second later: still nothing settled, so the timestamp must not move either
+            clock::increment_for_testing(&mut clock, 400);
+            logic::update_state_for_testing(&clock, &mut stg, 0);
+
+            let (supply_index_final, borrow_index_final) = storage::get_index(&mut stg, 0);
+            assert!(supply_index_final == supply_index_before, 0);
+            assert!(borrow_index_final == borrow_index_before, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 0) == 5000, 0);
+
+            clock::destroy_for_testing(clock);
+            test_scenario::return_shared(stg);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    // Repeated sub-second updates must not consume the elapsed time: once a whole second has
+    // passed the interest for that second is still accrued, and the remainder carries over
+    #[test]
+    public fun test_update_state_carries_sub_second_remainder() {
+        let scenario = test_scenario::begin(OWNER);
+        {
+            global::init_protocol(&mut scenario);
+        };
+
+        setup_borrowed_reserve(&mut scenario, 5000);
+
+        test_scenario::next_tx(&mut scenario, OWNER);
+        {
+            let stg = test_scenario::take_shared<Storage>(&scenario);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            clock::set_for_testing(&mut clock, 5000);
+
+            let (supply_index_before, borrow_index_before) = storage::get_index(&mut stg, 0);
+
+            // Three updates 400ms apart: the first two settle nothing, the third settles one
+            // whole second and leaves the remaining 200ms for the next interval
+            clock::increment_for_testing(&mut clock, 400);
+            logic::update_state_for_testing(&clock, &mut stg, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 0) == 5000, 0);
+
+            clock::increment_for_testing(&mut clock, 400);
+            logic::update_state_for_testing(&clock, &mut stg, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 0) == 5000, 0);
+
+            clock::increment_for_testing(&mut clock, 400);
+            logic::update_state_for_testing(&clock, &mut stg, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 0) == 6000, 0);
+
+            let (supply_index_after, borrow_index_after) = storage::get_index(&mut stg, 0);
+            assert!(supply_index_after > supply_index_before, 0);
+            assert!(borrow_index_after > borrow_index_before, 0);
+
+            clock::destroy_for_testing(clock);
+            test_scenario::return_shared(stg);
+        };
+
+        test_scenario::end(scenario);
+    }
+
+    // The accrual over one long interval and the accrual over the same span broken into many
+    // sub-second updates must agree; the sub-second updates used to accrue nothing at all
+    #[test]
+    public fun test_update_state_split_accrual_matches_single_accrual() {
+        let scenario = test_scenario::begin(OWNER);
+        {
+            global::init_protocol(&mut scenario);
+        };
+
+        // BTC(asset 2) and USDC(asset 3) are configured with the same rate parameters, so the
+        // same utilization gives them the same rates and their indexes move in lockstep
+        test_scenario::next_tx(&mut scenario, OWNER);
+        {
+            let stg = test_scenario::take_shared<Storage>(&scenario);
+            let price_oracle = test_scenario::take_shared<PriceOracle>(&scenario);
+            let clock = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+
+            logic::execute_deposit_for_testing<BTC_TEST>(&clock, &mut stg, 2, OWNER, 1000_000000000);
+            logic::execute_deposit_for_testing<USDC_TEST>(&clock, &mut stg, 3, OWNER, 1000_000000000);
+
+            clock::set_for_testing(&mut clock, 5000);
+            logic::execute_borrow_for_testing<BTC_TEST>(&clock, &price_oracle, &mut stg, 2, OWNER, 500_000000000);
+            logic::execute_borrow_for_testing<USDC_TEST>(&clock, &price_oracle, &mut stg, 3, OWNER, 500_000000000);
+
+            let (btc_supply_rate, btc_borrow_rate) = storage::get_current_rate(&mut stg, 2);
+            let (usdc_supply_rate, usdc_borrow_rate) = storage::get_current_rate(&mut stg, 3);
+            assert!(btc_supply_rate > 0 && btc_borrow_rate > 0, 0);
+            assert!(btc_supply_rate == usdc_supply_rate, 0);
+            assert!(btc_borrow_rate == usdc_borrow_rate, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 2) == 5000, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 3) == 5000, 0);
+
+            // USDC: forty updates 250ms apart, covering ten seconds
+            let i = 0;
+            while (i < 40) {
+                clock::increment_for_testing(&mut clock, 250);
+                logic::update_state_for_testing(&clock, &mut stg, 3);
+                i = i + 1;
+            };
+
+            // BTC: a single update covering the same ten seconds
+            logic::update_state_for_testing(&clock, &mut stg, 2);
+
+            assert!(storage::get_last_update_timestamp(&stg, 2) == 15000, 0);
+            assert!(storage::get_last_update_timestamp(&stg, 3) == 15000, 0);
+
+            let (single_supply_index, single_borrow_index) = storage::get_index(&mut stg, 2);
+            let (split_supply_index, split_borrow_index) = storage::get_index(&mut stg, 3);
+
+            // Interest was actually earned in both cases
+            assert!(single_supply_index > ray_math::ray(), 0);
+            assert!(single_borrow_index > ray_math::ray(), 0);
+            assert!(split_supply_index > ray_math::ray(), 0);
+            assert!(split_borrow_index > ray_math::ray(), 0);
+
+            // Settling second by second compounds a fraction more than settling once, so the
+            // two agree to within 1e-6 of the accrual rather than exactly
+            let single_supply_growth = single_supply_index - ray_math::ray();
+            let single_borrow_growth = single_borrow_index - ray_math::ray();
+            assert!(split_supply_index >= single_supply_index, 0);
+            assert!(split_borrow_index >= single_borrow_index, 0);
+            assert!(abs_diff(split_supply_index, single_supply_index) * 1000000 <= single_supply_growth, 0);
+            assert!(abs_diff(split_borrow_index, single_borrow_index) * 1000000 <= single_borrow_growth, 0);
+
+            clock::destroy_for_testing(clock);
+            test_scenario::return_shared(stg);
+            test_scenario::return_shared(price_oracle);
+        };
+
+        test_scenario::end(scenario);
+    }
+
     // #[test]
     // public fun test_execute_liquidate() {
         
