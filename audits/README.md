@@ -67,6 +67,13 @@ This directory contains all security audit reports for the NAVI Protocol. The au
   - Focus on the v2/v3 oracle read and price-update paths, deprecation stubs kept for
     upgrade compatibility, and the related package and version configuration changes
 
+#### Formal Verification
+- **Asymptotic - 2026**: `NAVI_Formal_Verification_Asymptotic_2026.pdf`
+  - Formal verification of the lending core, oracle stack, incentives, E-Mode and the
+    arithmetic kernel with the Sui Prover (500+ passing specifications)
+  - Covers fund conservation, frame isolation, round-trip exactness, protocol gating, and
+    the exact rounding boundaries where intended invariants stop holding
+
 ## Audit Coverage
 
 The audits cover the following key areas:
@@ -87,6 +94,7 @@ The following reputable security firms have conducted audits:
 - **OtterSec**: Blockchain security experts with focus on DeFi protocols
 - **Veridise**: Advanced formal verification and security analysis
 - **Salus**: Penetration testing and real-world security assessment
+- **Asymptotic**: Formal verification of Move contracts with the Sui Prover
 
 ## Contact
 
