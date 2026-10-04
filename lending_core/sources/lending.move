@@ -774,6 +774,11 @@ module lending_core::lending {
         base_borrow_v2(clock, oracle, storage, pool, asset, amount, account::account_owner(account_cap), system_state, ctx)
     }
 
+    /// Repay borrowed tokens for a given asset on behalf of `account_cap`.
+    ///
+    /// Returns excess balance — the unconsumed portion of `repay_coin` when
+    /// the repay amount exceeds the account's outstanding debt. If the full
+    /// repay amount is applied, the returned balance is zero.
     public(friend) fun repay_with_account_cap<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
