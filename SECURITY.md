@@ -10,6 +10,8 @@ guidelines that apply to every report.
 
 Security contact: Bounty Team — bounty@naviprotocol.io
 
+For an urgent issue, or one outside the programme's scope, email bounty@naviprotocol.io directly.
+
 Do not open a public GitHub issue for a vulnerability.
 
 ## Scope
