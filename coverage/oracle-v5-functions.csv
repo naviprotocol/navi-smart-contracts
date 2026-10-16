@@ -1,0 +1,198 @@
+module,function,instructions,executed,counted,reason_not_counted
+adaptor_pyth,get_identifier_to_vector,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+adaptor_pyth,get_identifier_to_vector_v2,9,0,no,reachable only through code that is not counted
+adaptor_pyth,get_price_info_object_id,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+adaptor_pyth,get_price_info_object_id_v2,8,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+adaptor_pyth,get_price_native,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+adaptor_pyth,get_price_native_v2,26,0,no,reachable only through code that is not counted
+adaptor_pyth,get_price_to_target_decimal,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+adaptor_pyth,get_price_to_target_decimal_v2,13,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+adaptor_pyth,get_price_unsafe_native,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+adaptor_pyth,get_price_unsafe_native_v2,24,0,no,reachable only through code that is not counted
+adaptor_pyth,get_price_unsafe_to_target_decimal,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+adaptor_pyth,get_price_unsafe_to_target_decimal_v2,11,0,no,reachable only through code that is not counted
+adaptor_supra,get_price_native,5,0,no,needs a Supra object that unit tests cannot construct
+adaptor_supra,get_price_to_target_decimal,14,0,no,needs a Supra object that unit tests cannot construct
+adaptor_supra,pair_id_to_vector,5,5,yes,
+adaptor_supra,vector_to_pair_id,5,5,yes,
+adaptor_switchboard,get_aggregator_id,6,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+adaptor_switchboard,get_identifier_to_vector,6,0,no,reachable only through code that is not counted
+adaptor_switchboard,get_price_native,18,0,no,reachable only through code that is not counted
+adaptor_switchboard,get_price_to_target_decimal,12,0,no,reachable only through code that is not counted
+config,get_coin_type,6,6,yes,
+config,get_coin_type_from_feed,4,4,yes,
+config,get_config_id_to_address,4,4,yes,
+config,get_diff_threshold2_timer,6,6,yes,
+config,get_diff_threshold2_timer_from_feed,4,4,yes,
+config,get_feeds,3,3,yes,
+config,get_historical_price_ttl,4,4,yes,
+config,get_history_price_data_from_feed,10,10,yes,
+config,get_history_price_from_feed,4,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+config,get_max_duration_within_thresholds,6,6,yes,
+config,get_max_duration_within_thresholds_from_feed,4,4,yes,
+config,get_max_timestamp_diff,6,6,yes,
+config,get_max_timestamp_diff_from_feed,4,4,yes,
+config,get_maximum_allowed_span_percentage,6,6,yes,
+config,get_maximum_allowed_span_percentage_from_feed,4,4,yes,
+config,get_maximum_effective_price,6,6,yes,
+config,get_maximum_effective_price_from_feed,4,4,yes,
+config,get_minimum_effective_price,6,6,yes,
+config,get_minimum_effective_price_from_feed,4,4,yes,
+config,get_oracle_id,6,6,yes,
+config,get_oracle_id_from_feed,4,4,yes,
+config,get_oracle_provider_config,19,19,yes,
+config,get_oracle_provider_config_from_feed,15,15,yes,
+config,get_oracle_provider_configs,5,5,yes,
+config,get_oracle_provider_configs_from_feed,3,3,yes,
+config,get_oracle_provider_from_oracle_provider_config,3,3,yes,
+config,get_pair_id,6,6,yes,
+config,get_pair_id_from_feed,5,5,yes,
+config,get_pair_id_from_oracle_provider_config,3,3,yes,
+config,get_price_diff_threshold1,6,6,yes,
+config,get_price_diff_threshold1_from_feed,4,4,yes,
+config,get_price_diff_threshold2,6,6,yes,
+config,get_price_diff_threshold2_from_feed,4,4,yes,
+config,get_price_feed,15,15,yes,
+config,get_price_feed_id,6,6,yes,
+config,get_price_feed_id_from_feed,4,4,yes,
+config,get_price_feed_mut,15,15,yes,
+config,get_price_from_history,4,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+config,get_primary_oracle_provider,3,3,yes,
+config,get_primary_oracle_provider_config,8,8,yes,
+config,get_secondary_oracle_provider,3,3,yes,
+config,get_secondary_source_config,8,8,yes,
+config,get_updated_time_from_history,4,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+config,get_vec_feeds,4,4,yes,
+config,is_oracle_provider_config_enable,3,3,yes,
+config,is_paused,4,4,yes,
+config,is_price_feed_enable,4,4,yes,
+config,is_price_feed_exists,56,56,yes,
+config,is_secondary_oracle_available,30,30,yes,
+config,keep_history_update,12,12,yes,
+config,new_config,21,21,yes,
+config,new_oracle_provider_config,48,48,yes,
+config,new_price_feed,78,72,yes,
+config,reset_diff_threshold2_timer,22,22,yes,
+config,set_enable_to_price_feed,32,28,yes,
+config,set_historical_price_ttl_to_price_feed,32,32,yes,
+config,set_max_duration_within_thresholds_to_price_feed,32,28,yes,
+config,set_max_timestamp_diff_to_price_feed,32,28,yes,
+config,set_maximum_allowed_span_percentage_to_price_feed,32,28,yes,
+config,set_maximum_effective_price_to_price_feed,45,39,yes,
+config,set_minimum_effective_price_to_price_feed,51,51,yes,
+config,set_oracle_id_to_price_feed,67,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+config,set_oracle_provider_config_enable,63,63,yes,
+config,set_oracle_provider_config_pair_id,50,50,yes,
+config,set_pause,16,16,yes,
+config,set_price_diff_threshold1_to_price_feed,51,47,yes,
+config,set_price_diff_threshold2_to_price_feed,45,41,yes,
+config,set_primary_oracle_provider,71,71,yes,
+config,set_secondary_oracle_provider,62,62,yes,
+config,start_or_continue_diff_threshold2_timer,20,20,yes,
+config,version_migrate,16,12,no,"version migration, runs once after an upgrade"
+config,version_verification,5,5,yes,
+oracle,create_feeder,8,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+oracle,decimal,9,9,yes,
+oracle,get_token_price,60,60,yes,
+oracle,init,31,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+oracle,oracle_version_migrate,16,12,no,"version migration, runs once after an upgrade"
+oracle,price_object,15,11,yes,
+oracle,register_token_price,50,36,yes,
+oracle,safe_decimal,6,6,yes,
+oracle,set_update_interval,17,17,yes,
+oracle,update_price,52,44,yes,
+oracle,update_token_price,34,34,yes,
+oracle,update_token_price_batch,53,45,yes,
+oracle,version_migrate,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+oracle,version_verification,5,5,yes,
+oracle_constants,both_type,2,0,no,reachable only through code that is not counted
+oracle_constants,default_decimal_limit,2,2,yes,
+oracle_constants,default_update_interval,2,2,yes,
+oracle_constants,level_critical,2,2,yes,
+oracle_constants,level_major,2,2,yes,
+oracle_constants,level_normal,2,2,yes,
+oracle_constants,level_warning,2,2,yes,
+oracle_constants,multiple,2,2,yes,
+oracle_constants,no_available_prices,2,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+oracle_constants,primary_type,2,0,no,reachable only through code that is not counted
+oracle_constants,secondary_type,2,0,no,reachable only through code that is not counted
+oracle_constants,success,2,0,no,reachable only through code that is not counted
+oracle_constants,unavailable_prices,2,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+oracle_constants,version,2,2,yes,
+oracle_dynamic_getter,get_dynamic_single_price,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+oracle_dynamic_getter,get_dynamic_single_price_v2,228,0,no,takes no part in protocol runtime logic (read-only price helper with no caller)
+oracle_error,incorrect_version,2,2,yes,
+oracle_error,invalid_final_price,2,0,no,reachable only through code that is not counted
+oracle_error,invalid_oracle_provider,2,0,no,reachable only through code that is not counted
+oracle_error,invalid_price_diff,2,0,no,reachable only through code that is not counted
+oracle_error,invalid_value,2,2,yes,
+oracle_error,no_available_price,2,0,no,reachable only through code that is not counted
+oracle_error,non_existent_oracle,2,2,yes,
+oracle_error,not_available_version,2,0,no,reachable only through code that is not counted
+oracle_error,oracle_already_exist,2,0,yes,
+oracle_error,oracle_config_already_exists,2,2,yes,
+oracle_error,oracle_provider_config_not_found,2,2,yes,
+oracle_error,oracle_provider_disabled,2,2,yes,
+oracle_error,pair_not_match,2,0,no,reachable only through code that is not counted
+oracle_error,paused,2,2,yes,
+oracle_error,price_feed_already_exists,2,2,yes,
+oracle_error,price_feed_not_found,2,2,yes,
+oracle_error,price_length_not_match,2,0,yes,
+oracle_error,price_oracle_not_found,2,0,yes,
+oracle_error,provider_config_not_found,2,2,yes,
+oracle_error,provider_is_being_used_in_primary,2,2,yes,
+oracle_manage,create_config,3,3,yes,
+oracle_manage,create_price_feed,16,16,yes,
+oracle_manage,create_pyth_oracle_provider_config,10,10,yes,
+oracle_manage,create_supra_oracle_provider_config,11,11,yes,
+oracle_manage,create_switchboard_oracle_provider_config,10,10,yes,
+oracle_manage,disable_pyth_oracle_provider,9,9,yes,
+oracle_manage,disable_supra_oracle_provider,9,9,yes,
+oracle_manage,disable_switchboard_oracle_provider,9,9,yes,
+oracle_manage,enable_pyth_oracle_provider,9,9,yes,
+oracle_manage,enable_supra_oracle_provider,9,9,yes,
+oracle_manage,enable_switchboard_oracle_provider,9,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+oracle_manage,set_enable_to_price_feed,8,8,yes,
+oracle_manage,set_historical_price_ttl_to_price_feed,8,8,yes,
+oracle_manage,set_max_duration_within_thresholds_to_price_feed,8,8,yes,
+oracle_manage,set_max_timestamp_diff_to_price_feed,8,8,yes,
+oracle_manage,set_maximum_allowed_span_percentage_to_price_feed,8,8,yes,
+oracle_manage,set_maximum_effective_price_to_price_feed,8,8,yes,
+oracle_manage,set_minimum_effective_price_to_price_feed,8,8,yes,
+oracle_manage,set_pause,7,7,yes,
+oracle_manage,set_price_diff_threshold1_to_price_feed,8,8,yes,
+oracle_manage,set_price_diff_threshold2_to_price_feed,8,8,yes,
+oracle_manage,set_primary_oracle_provider,8,8,yes,
+oracle_manage,set_pyth_price_oracle_provider_pair_id,9,9,yes,
+oracle_manage,set_secondary_oracle_provider,8,8,yes,
+oracle_manage,set_supra_price_source_pair_id,9,9,yes,
+oracle_manage,set_switchboard_price_source_pair_id,9,9,yes,
+oracle_manage,version_migrate,6,6,no,"version migration, runs once after an upgrade"
+oracle_pro,get_price_from_adaptor,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+oracle_pro,get_price_from_adaptor_v2,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+oracle_pro,get_price_from_adaptor_v3,72,0,no,needs a Supra object that unit tests cannot construct
+oracle_pro,update_single_price,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+oracle_pro,update_single_price_v2,2,0,no,retired entry point kept for upgrade compatibility (body is a single abort)
+oracle_pro,update_single_price_v3,348,0,no,"live Supra price-update entry; needs a Supra object, logic tested through test-only versions with mocked prices"
+oracle_provider,get_pair_id_from_oracle_provider_config,4,4,yes,
+oracle_provider,get_provider_from_oracle_provider_config,4,4,yes,
+oracle_provider,is_empty,6,6,yes,
+oracle_provider,is_oracle_provider_config_enable,4,4,yes,
+oracle_provider,new_empty_provider,4,4,yes,
+oracle_provider,new_oracle_provider_config,5,5,yes,
+oracle_provider,pyth_provider,4,4,yes,
+oracle_provider,set_enable_to_oracle_provider_config,5,5,yes,
+oracle_provider,set_pair_id_to_oracle_provider_config,5,5,yes,
+oracle_provider,supra_provider,4,4,yes,
+oracle_provider,switchboard_provider,4,4,yes,
+oracle_provider,to_string,4,4,yes,
+oracle_utils,abs_sub,12,12,yes,
+oracle_utils,calculate_amplitude,45,45,yes,
+oracle_utils,to_target_decimal_value,45,45,yes,
+oracle_utils,to_target_decimal_value_safe,38,38,yes,
+oracle_version,next_version,4,0,no,takes no part in protocol runtime logic (no caller in the protocol)
+oracle_version,pre_check_version,8,8,yes,
+oracle_version,this_version,2,2,yes,
+strategy,is_oracle_price_fresh,12,12,yes,
+strategy,validate_price_difference,35,35,yes,
+strategy,validate_price_range_and_history,37,35,yes,
