@@ -21,9 +21,10 @@ its deployed package id and version.
 
 ## Coordinated disclosure
 
-We ask reporters to give us the time stated in the programme's disclosure guidelines to triage and
-fix an issue before any public disclosure. We acknowledge valid reports through the programme and
-credit reporters there unless they prefer otherwise.
+We triage every report within 72 hours. Once the fix for a reported issue is live on chain, the
+reporter may publish the report 30 days later, with exploit details redacted while the affected code
+is still in use. We acknowledge valid reports through the programme and credit reporters there unless
+they prefer otherwise.
 
 ## Incident disclosure
 
