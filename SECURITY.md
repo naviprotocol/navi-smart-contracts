@@ -24,3 +24,9 @@ its deployed package id and version.
 We ask reporters to give us the time stated in the programme's disclosure guidelines to triage and
 fix an issue before any public disclosure. We acknowledge valid reports through the programme and
 credit reporters there unless they prefer otherwise.
+
+## Incident disclosure
+
+If a security incident materially affects user funds, protocol solvency or access control, we disclose it
+publicly through our official channels within 72 hours of confirming it, and publish a written post-mortem
+within 14 days covering the timeline, root cause, remediation and follow-ups.
