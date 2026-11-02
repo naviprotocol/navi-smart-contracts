@@ -1265,6 +1265,14 @@ module lending_core::incentive_v3 {
         }
     }
 
+    /// Repay borrowed tokens for a given asset on behalf of `account_cap`.
+    ///
+    /// Returns excess balance — the unconsumed portion of `repay_coin` when
+    /// the repay amount exceeds the account's outstanding debt. If the full
+    /// repay amount is applied, the returned balance is zero.
+    ///
+    /// Callers should check `balance::value(&excess)` and route any non-zero
+    /// remainder back to the user or strategy.
     public fun repay_with_account_cap<CoinType>(
         clock: &Clock,
         oracle: &PriceOracle,
