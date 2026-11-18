@@ -31,3 +31,13 @@ they prefer otherwise.
 If a security incident materially affects user funds, protocol solvency or access control, we disclose it
 publicly through our official channels within 72 hours of confirming it, and publish a written post-mortem
 within 14 days covering the timeline, root cause, remediation and follow-ups.
+
+## SEAL Safe Harbor
+
+NAVI has adopted the SEAL Whitehat Safe Harbor Agreement. During an active exploit of the in-scope contracts,
+eligible whitehats may rescue funds at risk, return them to NAVI's asset recovery address and receive a bounty.
+Our agreement is `0x4B52EF18651509BC0e3d0Fe4a847A97271C30C7a` on Ethereum mainnet, registered in the SEAL
+SafeHarborRegistry by NAVI's MPC wallet `0x55cF0D54961c1E8A83a885bfA58Ba169032A1015`.
+
+Scope, asset recovery address, bounty terms and whitehat requirements: [SAFE_HARBOR.md](SAFE_HARBOR.md).
+Contact bounty@naviprotocol.io before returning funds or claiming a bounty.
